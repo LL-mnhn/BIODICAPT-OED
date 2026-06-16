@@ -1,0 +1,33 @@
+# R files
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+.Rprofile
+.Rbuildignore
+
+# Data - original/large datasets stay local
+data/raw_data/*
+data/preprocessed_data/*
+# ...except necessary folder/files
+!data/raw_data/.gitkeep
+!data/preprocessed_data/.gitkeep
+!data/preprocessed_data/MASTER_*
+
+# Output - most outputs should stay local
+outputs/results/*
+outputs/figures/*
+# ...except import results or illustrative figures
+!outputs/results/.gitkeep
+!outputs/figures/.gitkeep
+!outputs/figures/500ENI_sites.pdf
+!outputs/figures/biodicapt_network.pdf
+!outputs/figures/corine_hexagons.pdf
+!outputs/figures/chelsa_tas_hexagons.pdf
+!outputs/figures/stoc_sightings_Pica_pica.pdf
+
+# Seed - hide to avoid reverse-engineering of raw_data
+data/config/seed.R
+
+# Test - exclude test scripts
+tests/
