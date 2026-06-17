@@ -52,6 +52,7 @@ CORINE_FILEPATH <- file.path(RAW_DATA_PATH,
 
 # CHELSA Dataset
 CHELSA_DATASETS <- c("tas", "spi12") # CHELSA is a database with many datasets
+CHELSA_UNITS <- c("°C", "Index")
 CHELSA_FOLDER <- file.path(RAW_DATA_PATH, "CHELSA-monthly")
 
 # STOC Dataset
@@ -61,10 +62,15 @@ STOC_FILEPATH <- file.path(RAW_DATA_PATH, "STOC", "Dataframe_STOC_input.RData")
 MASTER_SF_PATH <- file.path(
     PROCESSED_DATA_PATH, 
     paste0("MASTER_", OBS_YEAR, "_projection_france_hexagons_res", RES_KM, "km-WGS84.gpkg"))
-MASTER_OBS_PATH <- file.path(
+BIODICAPT_OBS_FULL <- file.path(
     PROCESSED_DATA_PATH, 
-    paste0("MASTER_", OBS_YEAR, "_obs_data_res", RES_KM, "km-WGS84.csv"))
-
+    paste0("BIODICAPT_", OBS_YEAR, "_obs_features_res", RES_KM, "km-WGS84.csv"))
+ENI500_OBS_FULL <- file.path(
+    PROCESSED_DATA_PATH, 
+    paste0("ENI500_", OBS_YEAR, "_obs_features_res", RES_KM, "km-WGS84.csv"))
+STOC_OBS_FULL <- file.path(
+    PROCESSED_DATA_PATH, 
+    paste0("STOC_", OBS_YEAR, "_obs_features_res", RES_KM, "km-WGS84.csv"))
 
 ### Plot styling -------------------------------------------------------
 FONT <- "Lexend"

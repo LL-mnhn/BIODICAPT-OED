@@ -1,18 +1,15 @@
 # This scripts checks the presence of files needed in ./data/raw_data
 
-##### Libraries #####
+##### Libraries ##### --------------------------------------------------
 library(cli)
 
 
-##### Parameters #####
+##### Parameters ##### -------------------------------------------------
 source(here::here("data/config/config.R")) # Import global parameters
-
-# list of datasets fetched from CHELSA model
-chelsa_datasets <- c("tas")
 
 
 ##### Helper functions #####
-check_BIODICAPT_files <- function(verbose = VERBOSE) {
+check_biodicapt_files <- function(verbose = VERBOSE) {
     if (verbose) {
         cli_alert_info("Checking BIODICAPT files...")
     }
@@ -38,7 +35,7 @@ check_BIODICAPT_files <- function(verbose = VERBOSE) {
     }
 }
 
-check_ENI500_files <- function(verbose = VERBOSE) {
+check_eni500_files <- function(verbose = VERBOSE) {
     if (verbose) {
         cli_alert_info("Checking 500 ENI file...")
     }
@@ -63,7 +60,7 @@ check_ENI500_files <- function(verbose = VERBOSE) {
     }
 }
 
-check_CORINE_raster <- function(verbose = VERBOSE) {
+check_corine_raster <- function(verbose = VERBOSE) {
     if (verbose) {
         cli_alert_info("Checking CORINE Land Cover files...")
     }
@@ -80,7 +77,7 @@ check_CORINE_raster <- function(verbose = VERBOSE) {
     }
 }
 
-check_CHELSA_rasters <- function(dataset, verbose = VERBOSE) {
+check_chelsa_rasters <- function(dataset, verbose = VERBOSE) {
     if (verbose) {
         cli_alert_info("Checking CHELSA files...")
     }
@@ -130,19 +127,21 @@ check_species_data <- function(verbose = VERBOSE) {
 }
 
 
-##### Main #####
+##### Verify each dataset ##### ----------------------------------------
+cli_alert_warning("This script can only be run on raw datasets, it should not be run on external machines.\nIf you cloned this repository from GitHub, ignore this script and begin usage with `1-pre_processing.R`.")
+
 # 1. BIODICAPT dataset
-. <- check_BIODICAPT_files()
+. <- check_biodicapt_files()
 
 # 2. 500 ENI dataset
-. <- check_ENI500_files()
+. <- check_eni500_files()
 
 # 3. CORINE Land Cover dataset
-. <- check_CORINE_raster()
+. <- check_corine_raster()
 
 # 4. CHELSA tas dataset (tas: near-surface air temperature)
-for (chelsa_dataset in chelsa_datasets) {
-    . <- check_CHELSA_rasters(dataset = chelsa_dataset)
+for (chelsa_dataset in CHELSA_DATASETS) {
+    . <- check_chelsa_rasters(dataset = chelsa_dataset)
 }
 
 # 5. Species absence-presence dataset

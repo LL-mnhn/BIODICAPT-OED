@@ -3,7 +3,7 @@
 #   - formats datasets into similar csvs/rasters
 #   - anonymizes gps coordinates
 
-##### Libraries #####
+##### Libraries ##### --------------------------------------------------
 library(tidyterra)
 library(terra)
 library(dplyr)
@@ -16,7 +16,7 @@ source(here::here("R/utils_data.R"))
 source(here::here("R/utils_figures.R"))
 
 
-##### Parameters #####
+##### Parameters ##### -------------------------------------------------
 source(here::here("data/config/config.R")) # Import global parameters
 source(here::here("data/config/seed.R")) # for reproducible results  (hidden for confidentiality)
 
@@ -43,7 +43,7 @@ STOC_PATH_PREPROCESSED <- file.path(PROCESSED_DATA_PATH,
         "STOC_data_cleaned.csv") 
 
 
-##### Helper functions #####
+##### Helper functions ##### -------------------------------------------
 preprocess_biodicapt_dataset <- function(verbose = VERBOSE) {
     if (verbose) {
         cli_alert_info("Pre-processing of BIODICAPT dataset.")
@@ -67,7 +67,7 @@ preprocess_biodicapt_dataset <- function(verbose = VERBOSE) {
             cli_alert_info("Data anonymization...")
         }
         anonym_biodicapt_df <- blur_coordinates(
-            biodicapt_df, "LON", "LAT", RES_KM, CUSTOM_SEED)
+            biodicapt_df, "LON", "LAT", RES_KM, BLUR_SEED)
 
         # Save resulting dataframe
         if (verbose) {
@@ -114,7 +114,7 @@ preprocess_eni500_dataset <- function(verbose = VERBOSE) {
             cli_alert_info("Data anonymization...")
         }
         anonym_eni500_df <- blur_coordinates(
-            eni500_df, "LON", "LAT", RES_KM, CUSTOM_SEED)
+            eni500_df, "LON", "LAT", RES_KM, BLUR_SEED)
 
         # Save resulting dataframe
         if (verbose) {
@@ -348,7 +348,7 @@ show_save_results <- function(verbose = VERBOSE) {
     if (cleaned_answer %in% c("y", "yes")) {
         if (VERBOSE) {
             cli_alert_info("Showing plots to the user.")
-            cli_alert_warning(paste0("All figures automaticaly are saved as .pdf inside '", FIGURES_PATH, "' ."))
+            cli_alert_warning(paste0("All figures automatically are saved as .pdf inside '", FIGURES_PATH, "' ."))
         }
         
         # 1. biodicapt dataset
@@ -380,20 +380,20 @@ show_save_results <- function(verbose = VERBOSE) {
             figure = eni500_plot, 
             save_path = file.path(FIGURES_PATH, "500ENI_sites.pdf"))
 
-        # 3. Corine Land Cover Dataset
-        # raster
-        corine_raster <- rast(
-            paste0(CORINE_BASENAME, "_projection_france_res", RES_KM, "km-WGS84.tif")
-        )
-        corine_plot <- ggplot_categorical_raster_on_background_map(
-            background_map = ggplot_get_france_base_map("national"), 
-            raster = corine_raster,
-            layer_name = "NEW_LABEL3")
-        print(corine_plot)
-        standardised_ggplot_save(
-            figure = corine_plot, 
-            save_path = file.path(FIGURES_PATH, "corine_raster.pdf"))
-        # shapefile  
+        # # 3. Corine Land Cover Dataset
+        # # raster
+        # corine_raster <- rast(
+        #     paste0(CORINE_BASENAME, "_projection_france_res", RES_KM, "km-WGS84.tif")
+        # )
+        # corine_plot <- ggplot_categorical_raster_on_background_map(
+        #     background_map = ggplot_get_france_base_map("national"), 
+        #     raster = corine_raster,
+        #     layer_name = "NEW_LABEL3")
+        # print(corine_plot)
+        # standardised_ggplot_save(
+        #     figure = corine_plot, 
+        #     save_path = file.path(FIGURES_PATH, "corine_raster.pdf"))
+        # # shapefile  
         corine_shapefile <- st_read(
             paste0(CORINE_BASENAME, 
                 "_projection_france_hexagons_res", RES_KM, "km-WGS84.gpkg"),
@@ -413,22 +413,22 @@ show_save_results <- function(verbose = VERBOSE) {
         
         
         # 4. chelsa datasets
-        for (dataset_name in CHELSA_DATASETS) {
-            chelsa_dataset_basename <- paste0(CHELSA_BASENAME, dataset_name)
-            # raster
-            chelsa_tas_raster <- rast(
-                paste0(chelsa_dataset_basename, 
-                    "_projection_france_res", RES_KM, "km-WGS84.tif"))
-            chelsa_tas_plot <- ggplot_quantitative_raster_on_background_map(
-                background_map = ggplot_get_france_base_map("national"), 
-                raster = chelsa_tas_raster,
-                layer_name = "mean",
-                unit="°C",
-                limits=NULL)
-            print(chelsa_tas_plot)
-            standardised_ggplot_save(
-                figure = chelsa_tas_plot, 
-                save_path = file.path(FIGURES_PATH, "chelsa_tas_raster.pdf"))
+        for (i in 1:length(CHELSA_DATASETS)) {
+            chelsa_dataset_basename <- paste0(CHELSA_BASENAME, CHELSA_DATASETS[i])
+            # # raster
+            # chelsa_tas_raster <- rast(
+            #     paste0(chelsa_dataset_basename, 
+            #         "_projection_france_res", RES_KM, "km-WGS84.tif"))
+            # chelsa_tas_plot <- ggplot_quantitative_raster_on_background_map(
+            #     background_map = ggplot_get_france_base_map("national"), 
+            #     raster = chelsa_tas_raster,
+            #     layer_name = "mean",
+            #     unit="°C",
+            #     limits=NULL)
+            # print(chelsa_tas_plot)
+            # standardised_ggplot_save(
+            #     figure = chelsa_tas_plot, 
+            #     save_path = file.path(FIGURES_PATH, paste0("chelsa_", CHELSA_DATASETS[i], "_raster.pdf")))
             # shapefile  
             chelsa_shapefile <- st_read(
                 paste0(chelsa_dataset_basename, 
@@ -438,13 +438,15 @@ show_save_results <- function(verbose = VERBOSE) {
                 background_map = ggplot_get_france_base_map("national"), 
                 shapefile = chelsa_shapefile,
                 layer_name = "dominant_class",
-                unit="°C",
-                limits=NULL)
+                unit=CHELSA_UNITS[i],
+                limits=NULL,
+                precision_auto_limits = 0.1)
             print(chelsa_plot_bis)
             standardised_ggplot_save(
                 figure = chelsa_plot_bis, 
-                save_path = file.path(FIGURES_PATH, "chelsa_tas_hexagons.pdf"))    
-            
+                save_path = file.path(FIGURES_PATH, paste0("chelsa_", CHELSA_DATASETS[i], "_hexagons.pdf")))    
+        }
+        
         # 5. stoc dataset
         sp_to_show = "Pica_pica"
         stoc_df <- read_csv(STOC_PATH_PREPROCESSED, show_col_types = FALSE)
@@ -477,9 +479,8 @@ show_save_results <- function(verbose = VERBOSE) {
                 paste0("stoc_sightings_", sp_to_show,".pdf")))
 
             
-            if (VERBOSE) {
-                cli_alert_success("Plots and PDFs are ready!")
-            }
+        if (VERBOSE) {
+            cli_alert_success("Plots and PDFs are ready!")
         }
     } else {
         if (VERBOSE) {
@@ -489,45 +490,48 @@ show_save_results <- function(verbose = VERBOSE) {
 }
 
 
-#### Transformation of raw datasets #####
-# 1. Biodicapt dataset
-. <- preprocess_biodicapt_dataset()
+##### Transformation of raw datasets ##### -----------------------------
+if (exists("BLUR_SEED")) {
+    # 1. Biodicapt dataset
+    . <- preprocess_biodicapt_dataset()
 
-# 2. 500 eni dataset
-. <- preprocess_eni500_dataset()
+    # 2. 500 eni dataset
+    . <- preprocess_eni500_dataset()
 
-# 3. Corine Land Cover dataset
-. <- before_preprocessing_corine_raster(
-    raster_path = CORINE_FILEPATH,
-    save_to = SIMPLIFIED_CORINE_PATH)
-. <- preprocess_raster(
-    raster_path = SIMPLIFIED_CORINE_PATH,
-    save_to_basename = CORINE_BASENAME)
-. <- preprocess_raster_hexagonal_sf(
-    raster_path = SIMPLIFIED_CORINE_PATH,
-    save_to_basename = CORINE_BASENAME,
-    extraction_mode = "categorical")
-
-# 4. Chelsa tas dataset 
-for (dataset_name in CHELSA_DATASETS) {
-    chelsa_dataset_basename <- paste0(CHELSA_BASENAME, dataset_name)
-    chelsa_annual_path <- paste0(chelsa_dataset_basename, "_annual-WGS84.tif")
-
-    . <- before_preprocessing_chelsa_raster(
-        dataset = dataset_name,
-        save_to = chelsa_annual_path)
+    # 3. Corine Land Cover dataset
+    . <- before_preprocessing_corine_raster(
+        raster_path = CORINE_FILEPATH,
+        save_to = SIMPLIFIED_CORINE_PATH)
     . <- preprocess_raster(
-        raster_path = chelsa_annual_path,
-        save_to_basename = chelsa_dataset_basename)
+        raster_path = SIMPLIFIED_CORINE_PATH,
+        save_to_basename = CORINE_BASENAME)
     . <- preprocess_raster_hexagonal_sf(
-        raster_path = chelsa_annual_path,
-        save_to_basename = chelsa_dataset_basename,
-        extraction_mode = "mean")
+        raster_path = SIMPLIFIED_CORINE_PATH,
+        save_to_basename = CORINE_BASENAME,
+        extraction_mode = "categorical")
+
+    # 4. Chelsa dataset 
+    for (dataset_name in CHELSA_DATASETS) {
+        chelsa_dataset_basename <- paste0(CHELSA_BASENAME, dataset_name)
+        chelsa_annual_path <- paste0(chelsa_dataset_basename, "_annual-WGS84.tif")
+
+        . <- before_preprocessing_chelsa_raster(
+            dataset = dataset_name,
+            save_to = chelsa_annual_path)
+        . <- preprocess_raster(
+            raster_path = chelsa_annual_path,
+            save_to_basename = chelsa_dataset_basename)
+        . <- preprocess_raster_hexagonal_sf(
+            raster_path = chelsa_annual_path,
+            save_to_basename = chelsa_dataset_basename,
+            extraction_mode = "mean")
+    }
+
+    # 5. Stoc dataset
+    . <- preprocess_stoc_dataset()
+} else {
+    cli_alert_warning("Variable 'BLUR_SEED' is not available, you are likely running this script without raw datasets installed. Skipping pre-processing.")
 }
 
-# 5. Stoc dataset
-. <- preprocess_stoc_dataset()
-
-
-##### Check results #####
+##### Check results ##### ----------------------------------------------
 . <- suppressWarnings(show_save_results())

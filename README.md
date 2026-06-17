@@ -19,7 +19,9 @@ The transition from the first phase to the second involves a significant shift i
 ### OED
 Optimal Experimental Design (OED) is a method for designing experiments to maximise information gain while minimising uncertainty, cost, time,...
 
-The key concept is that **not all observations are equally informative**. Applied to BIODICAPT, this concept can be particularly interesting when working with 'participartory science' and other fields. Here, we want to find the best argicultural plots to conduct our observation, with the constraints of the project (participatory & reduced budget).
+The key concept is that **not all observations are equally informative**. Applied to BIODICAPT, this concept can be particularly interesting when working with 'participartory science' and other fields. Here, we want to find the best argicultural plots to conduct our observation, with the constraints of the project (participatory & reduced budget). 
+
+For a detailed explanation of the methods, see [this README](resources/README.md).
 
 ## Description
 ### Repository Structure
@@ -49,21 +51,32 @@ The key concept is that **not all observations are equally informative**. Applie
 
 
 ## Getting Started
-### Clone the Repo
-Clone this repository to your machine
+### How to use
+1\. Clone this repository on your machine
 ```bash
 cd /your/local/folder
 git clone https://github.com/LL-mnhn/BIODICAPT-OED.git
 ```
 
-### Install dependencies
-> [!NOTE]
-> Add renv usage
+2\. Install dependencies
+
+Open `BIODICAPT-OED` as a new session in R (either with [Rstudio](https://docs.posit.co/ide/user/) or [Positron](https://positron.posit.co/welcome.html)). 
+
+Install `renv` if not already installed on your machine. Then load R environment.
+```R
+install.packages("renv")
+renv::restore()
+```
+
+3\. Run scripts and explore results!
 
 ### Usage Notes
-> [!NOTE]
-> Add tips
+Important results and figures are already saved in the `outputs` folder.
 
+When running on an external machine: 
+- `0-verify_datasets.R` can not be run (raw dataset are only accessible by authors)
+- `1-pre_processing.R` can only be run partially (processes raw datasets, which are unavailable; but can show and save figures).
+- Other files in `scripts` can be run without restrictions.
 
 ## Contact
 For questions and/or inquiries, please contact: <loic.lehnhoff@mnhn.fr>

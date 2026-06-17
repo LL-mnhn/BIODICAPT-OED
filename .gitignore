@@ -12,13 +12,20 @@ data/preprocessed_data/*
 # ...except necessary folder/files
 !data/raw_data/.gitkeep
 !data/preprocessed_data/.gitkeep
+!data/preprocessed_data/BIODICAPT_*
+!data/preprocessed_data/ENI500_*
+!data/preprocessed_data/STOC_*
+!data/preprocessed_data/CLC2018_*
+!data/preprocessed_data/CLC2018_*
 !data/preprocessed_data/MASTER_*
+!data/preprocessed_data/CHELSA_*
 
 # Output - most outputs should stay local
 outputs/results/*
 outputs/figures/*
-# ...except import results or illustrative figures
+# ...except important results 
 !outputs/results/.gitkeep
+# ...or useful illustrative figures
 !outputs/figures/.gitkeep
 !outputs/figures/500ENI_sites.pdf
 !outputs/figures/biodicapt_network.pdf
@@ -31,3 +38,6 @@ data/config/seed.R
 
 # Test - exclude test scripts
 tests/
+
+# All - exclude large files
+*.tif*

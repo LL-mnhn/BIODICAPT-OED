@@ -297,7 +297,8 @@ ggplot_quantitative_raster_on_background_map <- function(
         raster,
         layer_name,
         unit="°C",
-        limits=NULL){
+        limits=NULL,
+        precision_auto_limits=1){
     if (class(raster)[1] == "character") {
         # convert to dataframe for ggplot2
         raster <- rast(raster)  
@@ -312,8 +313,8 @@ ggplot_quantitative_raster_on_background_map <- function(
         high_limit <- limits[2]
     } else if (is.null(limits)) {
         # round palette scale to the bottom and top nearest multiple of 5
-        low_limit <- floor(min(raw_df[[layer_name]], na.rm = TRUE) / 5) * 5
-        high_limit <- ceiling(max(raw_df[[layer_name]], na.rm = TRUE) / 5) * 5
+        low_limit <- floor(min(raw_df[[layer_name]], na.rm = TRUE) / precision_auto_limits) * precision_auto_limits
+        high_limit <- ceiling(max(raw_df[[layer_name]], na.rm = TRUE) / precision_auto_limits) * precision_auto_limits
     } else {
         stop(paste("'limits' is not recognised. Expected vector of length 2 or NULL, got", limits))
     }
@@ -346,15 +347,16 @@ ggplot_quantitative_shapefile_on_background_map <- function(
     shapefile,
     layer_name,
     unit="°C",
-    limits=NULL) {
+    limits=NULL,
+    precision_auto_limits = 1) {
 
     if (is.vector(limits) && length(limits) == 2){
         low_limit <- limits[1]
         high_limit <- limits[2]
     } else if (is.null(limits)) {
         # round palette scale to the bottom and top nearest multiple of 5
-        low_limit <- floor(min(shapefile[[layer_name]], na.rm = TRUE) / 5) * 5
-        high_limit <- ceiling(max(shapefile[[layer_name]], na.rm = TRUE) / 5) * 5
+        low_limit <- floor(min(shapefile[[layer_name]], na.rm = TRUE) / precision_auto_limits) * precision_auto_limits
+        high_limit <- ceiling(max(shapefile[[layer_name]], na.rm = TRUE) / precision_auto_limits) * precision_auto_limits
     } else {
         stop(paste("'limits' is not recognised. Expected vector of length 2 or NULL, got", limits))
     }
