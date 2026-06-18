@@ -20,18 +20,10 @@ data/preprocessed_data/*
 !data/preprocessed_data/MASTER_*
 !data/preprocessed_data/CHELSA_*
 
-# Output - most outputs should stay local
+# Results - most outputs should stay local
 outputs/results/*
-outputs/figures/*
 # ...except important results 
 !outputs/results/.gitkeep
-# ...or useful illustrative figures
-!outputs/figures/.gitkeep
-!outputs/figures/500ENI_sites.pdf
-!outputs/figures/biodicapt_network.pdf
-!outputs/figures/corine_hexagons.pdf
-!outputs/figures/chelsa_tas_hexagons.pdf
-!outputs/figures/stoc_sightings_Pica_pica.pdf
 
 # Seed - hide to avoid reverse-engineering of raw_data
 data/config/seed.R
