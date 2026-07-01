@@ -20,15 +20,13 @@ data/preprocessed_data/*
 !data/preprocessed_data/MASTER_*
 !data/preprocessed_data/CHELSA_*
 
-# Results - most outputs should stay local
-outputs/results/*
-# ...except important results 
-!outputs/results/.gitkeep
-!outputs/results/STOC-OED/k_fold_points.Rda
-!outputs/results/STOC-OED/draftman_plot.pdf
-!outputs/results/STOC-OED/base_average_performances.pdf
-!outputs/results/STOC-OED/base-model_none-random-effect_k1
-!outputs/results/STOC-OED/base-model_units-random-effect_k1
+# Results - hide large files...
+outputs/results/STOC-OED/base-models/*
+# ...keep small files as examples
+!outputs/results/STOC-OED/base-models/base-model_none-random-effect_k1
+!outputs/results/STOC-OED/base-models/base-model_none-random-effect_k1/**
+!outputs/results/STOC-OED/base-models/base-model_units-random-effect_k1
+!outputs/results/STOC-OED/base-models/base-model_units-random-effect_k1/**
 
 # Seed - hide to avoid reverse-engineering of raw_data
 data/config/seed.R
