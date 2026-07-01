@@ -10,7 +10,6 @@ library(colorspace)
 
 
 ### Global variables ---------------------------------------------------
-VERBOSE <- TRUE
 OBS_YEAR <- "2018"  # Most recent year for CLC dataset
 RES_KM <- 10        # best compromise I think
 # Values for map extent (France limits with buffer, in CRS 4326)
@@ -24,7 +23,7 @@ LAT_MAX <- 51.05
 RAW_DATA_PATH <- file.path("data", "raw_data")
 PROCESSED_DATA_PATH <- file.path("data", "preprocessed_data")
 FIGURES_PATH <- file.path("outputs", "figures")
-# RESULTS_PATH <- file.path("results", "figures")
+RESULTS_PATH <- file.path("outputs", "results")
 # SIMULATION_PATH <- file.path("outputs", "simulation")
 
 
@@ -72,6 +71,24 @@ STOC_OBS_FULL <- file.path(
     PROCESSED_DATA_PATH, 
     paste0("STOC_", OBS_YEAR, "_obs_features_res", RES_KM, "km-WGS84.csv"))
 
+# Species names
+NAMES_SPECIES <- c(
+    "Alauda_arvensis", "Anthus_trivialis", "Carduelis_cannabina",
+    "Carduelis_carduelis", "Carduelis_chloris", "Certhia_brachydactyla",  
+    "Columba_palumbus", "Corvus_corone", "Cyanistes_caeruleus",
+    "Dendrocopos_major", "Emberiza_cirlus", "Emberiza_citrinella",
+    "Erithacus_rubecula", "Fringilla_coelebs", "Garrulus_glandarius",
+    "Hippolais_polyglotta", "Hirundo_rustica", "Luscinia_megarhynchos",
+    "Motacilla_alba", "Parus_major", "Passer_domesticus", "Periparus_ater",
+    "Phoenicurus_ochruros", "Phylloscopus_collybita", "Pica_pica",
+    "Regulus_ignicapilla", "Saxicola_rubicola", "Serinus_serinus",
+    "Sitta_europaea", "Streptopelia_decaocto", "Streptopelia_turtur",
+    "Sturnus_vulgaris", "Sylvia_atricapilla", "Sylvia_communis",
+    "Troglodytes_troglodytes", "Turdus_merula", "Turdus_philomelos",
+    "Turdus_viscivorus"     
+)
+
+
 ### Plot styling -------------------------------------------------------
 FONT <- "Lexend"
 PALETTE <- c("#D9054E", "#28A349", "#246CBC", 
@@ -80,6 +97,12 @@ SHAPES <- c(21, 22, 24, 23, 25, 8)
 SIZES <- c(1.66, 1.85, 1.5, 1.66, 1.5, 1.66)
 CUSTOM_SCALES <- list(
     scale_color_manual(values = darken(PALETTE, amount = 0.66)),
+    scale_fill_manual(values = PALETTE),
+    scale_shape_manual(values = SHAPES),
+    scale_size_manual(values = SIZES)
+)
+LIGHT_CUSTOM_SCALES <- list(
+    scale_color_manual(values = PALETTE),
     scale_fill_manual(values = PALETTE),
     scale_shape_manual(values = SHAPES),
     scale_size_manual(values = SIZES)

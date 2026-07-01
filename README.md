@@ -10,21 +10,14 @@ This repository focuses on **Optimal Experimental Designs (OEDs)** for the BIODI
 ### BIODICAPT
 BIODICAPT is a French initiative that aims at monitoring biodiversity of agricultural lands on a large (national) scale through the use of various recording devices.
 
-The project will consist of two phases:
+The project consists of two phases:
 1. Data collection in a "research" network of agricultural plots 
 2. Data collection in the 500 ENI network (voluntary participation of farmers)
 
-The transition from the first phase to the second involves a significant shift in scale for data collection, which is where OED will be needed.
-
-### OED
-Optimal Experimental Design (OED) is a method for designing experiments to maximise information gain while minimising uncertainty, cost, time,...
-
-The key concept is that **not all observations are equally informative**. Applied to BIODICAPT, this concept can be particularly interesting when working with 'participartory science' and other fields. Here, we want to find the best argicultural plots to conduct our observation, with the constraints of the project (participatory & reduced budget). 
-
-For a detailed explanation of the methods, see [this README](resources/README.md).
+The transition from the first phase to the second involves a significant shift in scale for data collection, which is where OED will be needed (more details [here](resources/README.md)).
 
 ## Description
-### Repository Structure
+### Structure
 ```
 ├── scripts                 # Core scripts to run
 ├── R                       # Functions
@@ -40,13 +33,14 @@ For a detailed explanation of the methods, see [this README](resources/README.md
 ├── README.md               # This file
 ```
 
-### Progress Tracker
+### Progress tracker
 - [X] Anonymize agricultural plots locations
-- [X] Auto-load datasets
-- [X] Pre-processing of datasets
-- [X] Implementation of various models (HMSC, GJAM, RF, DNN,...)
-- [ ] Implementation of custom cost function (functions?)
-- [ ] Implementation of exchange algorithm
+- [X] Load STOC dataset
+- [X] Pre-processing
+- [X] Training of HMSC models
+- [ ] Implementation of custom cost function
+- [ ] OED using HMSC on STOC
+- [ ] Add other models (GJAM, RF, DNN,...)
 - [ ] Results and comparison
 
 
@@ -62,21 +56,21 @@ git clone https://github.com/LL-mnhn/BIODICAPT-OED.git
 
 Open `BIODICAPT-OED` as a new session in R (either with [Rstudio](https://docs.posit.co/ide/user/) or [Positron](https://positron.posit.co/welcome.html)). 
 
-Install `renv` if not already installed on your machine. Then load R environment.
+Install `renv` if not already installed on your machine. Then run:
 ```R
 install.packages("renv")
 renv::restore()
 ```
 
-3\. Run scripts and explore results!
+3\. Environment is ready, local scripts can be run.
 
 ### Usage Notes
 Important results and figures are already saved in the `outputs` folder.
 
 When running on an external machine: 
 - `0-verify_datasets.R` can not be run (raw dataset are only accessible by authors)
-- `1-pre_processing.R` can only be run partially (processes raw datasets, which are unavailable; but can show and save figures).
+- `1-pre_processing.R` can only be run partially (it processes raw datasets, which are unavailable; but it can show and save basic figures).
 - Other files in `scripts` can be run without restrictions.
 
 ## Contact
-For questions and/or inquiries, please contact: <loic.lehnhoff@mnhn.fr>
+For inquiries, please contact: <loic.lehnhoff@mnhn.fr>

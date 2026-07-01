@@ -25,14 +25,14 @@ source(here::here("data/config/config.R")) # all parameters are grouped together
 # ARGS:
 #   - path: a path (folder or file) to check.
 #   - verbose: a boolean. If TRUE, shows info messages.
-authorize_overwrite <- function(path, verbose) {
+authorize_overwrite <- function(path, verbose = TRUE) {
     # if file does not exist, no overwrite needed, return TRUE
     if (!file.exists(path)) {
         return(TRUE)
     } else { 
         # if file exist, ask user
         user_input <- readline(prompt = paste0(" Overwrite `", path, 
-            "` file? [Y/n]: "))
+            "`? [Y/n]: "))
         cleaned_input <- tolower(trimws(user_input))
 
         if (cleaned_input %in% c("y", "yes")) {
@@ -208,10 +208,10 @@ clip_raster_from_shapefile <- function(raster, shapefile) {
 #   - save_to: a string or NULL. If NULL, returns raster, else the filepath where the raster will be saved. Must end in ".tif".
 #   - verbose: a boolean. If TRUE, shows info messages.
 #   - res_km: an integer/a float. Is used to define a buffer around the raster (in km, approximative).
-clip_raster_france_wgs86_crs <- function(
-        raster, 
-        verbose, 
+clip_raster_france_wgs84_crs <- function(
+        raster,  
         buffer, 
+        verbose = TRUE,
         save_to = NULL) {
     # import france shapefile with buffer to avoid clipping important data
     france_sf <- get_metropolitan_france_shapefile()
@@ -246,7 +246,7 @@ clip_raster_france_wgs86_crs <- function(
 #   - save_to: a string. The filepath where the raster will be saved. Must end in ".tif".
 #   - verbose: a boolean. If TRUE, shows info messages.
 #   - res_km: an integer/a float. Is used to define a buffer around the raster (in km, approximative).
-project_to_france_custom_grid <- function(raster, save_to, verbose, res_km) {   
+project_to_france_custom_grid <- function(raster, save_to, res_km, verbose = TRUE) {   
     # fit CORINE raster to new grid
     if (verbose) {
         cli_alert_info("Fitting new grid...\n")
@@ -280,7 +280,7 @@ project_to_france_custom_grid <- function(raster, save_to, verbose, res_km) {
 #   - verbose: a boolean. If TRUE, shows info messages.
 #   - res_km: an integer/a float. Is used to define a buffer around the raster (in km, approximative).
 #   - method: a string. If raster contains categorical data, must be "categorical". If raster contains numerical values, eithr "mean" or "median".
-project_to_hexagons <- function(raster, save_to, verbose, res_km, method) {
+project_to_hexagons <- function(raster, save_to, res_km, method, verbose = TRUE) {
     # 1. Define grid of hexagons
     # get grid of hexagons over france extent
     if (verbose) {
@@ -361,7 +361,7 @@ project_to_hexagons <- function(raster, save_to, verbose, res_km, method) {
 monthly_2_yearly_rasters <- function(
         raster_paths, 
         buffer, 
-        verbose, 
+        verbose = TRUE, 
         fun = mean){
     if (length(raster_paths) != 12){
         stop(paste("List of strings recieved contains", length(raster_paths), "elements, expected 12."))
@@ -516,4 +516,104 @@ simplify_CLC <- function(
         cli_alert_success("Re-classified CLC2018 is ready!")
     }
     return(clc_raster_collapsed)
+}
+
+
+# A function to automatise verbose interpretation of diagnostic vectors
+# ARGS:
+#   - vector: a vector of values to analyse.
+#   - bad: a numeric. The threshold under which values reveal a bad fit.
+#   - good: a numeric. The threshold over which values reveal a good fit.
+#   - order: a string. Indicates if lower is better ("low_better", default) or higer is bette (high_better).
+#   - mode: a sting. Indicates if showing full analysis ("full", default) or a quick 1-line summary ("quick").
+interpret_diagnostics <- function(
+    vector, 
+    good, 
+    bad = NULL, 
+    mode = "full",
+    order = "low_better") {
+    
+    if (order == "low_better") {
+        n_good <- sum(vector < good)    
+
+        if (is.null(bad)) {
+            n_bad <- sum(vector > good)
+            if (mode == "full") {
+                cli_alert_info(paste0(
+                    "Rule of thumb: <", good," (good)"))
+            }
+
+            n_acceptable <- 0
+        } else {
+            n_acceptable <- sum((vector > good) & (vector < bad))
+            n_bad <- sum(vector > bad)    
+            if (mode == "full") {
+                cli_alert_info(paste0(
+                    "Rule of thumb: <", good," (good), ",
+                    good, "-", bad, ", (acceptable), >",
+                    bad, " (bad)"))
+            }
+        }
+        
+    } else if (order == "high_better") {
+        n_good <- sum(vector > good)    
+
+        if (is.null(bad)) {
+            n_bad <- sum(vector < good)  
+            if (mode == "full") {
+                cli_alert_info(paste0(
+                    "Rule of thumb: >", good," (good)"))
+            }
+
+            n_acceptable <- 0
+        } else {
+            n_acceptable <- sum((vector < good) & (vector > bad))
+            n_bad <- sum(vector < bad)
+            if (mode == "full") {
+                cli_alert_info(paste0(
+                    "Rule of thumb: >", good," (good), ",
+                    good, "-", bad, ", (acceptable), <",
+                    bad, " (bad)"))   
+            }
+        }
+     
+    }
+    else {
+        stop(paste0("Mode should be one of 'low_better' or 'high_better'. ",
+        "Got '", mode, "' ."))
+    }
+    
+    if (mode == "full") {
+        if (n_good > 0) {
+            cli_alert_success(paste0(
+            "- Number of 'good' estimates: ", n_good, 
+            " (", round(100*n_good/length(vector), 2), "% of given values)"
+            ))
+        }
+        if ((n_acceptable > 0) & !(is.null(bad))) {
+            cli_alert_info(paste0(
+            "- Number of 'acceptable' estimates: ", n_acceptable, 
+            " (", round(100*n_acceptable/length(vector), 2), "% of given values)"
+            ))  
+        }
+        if (n_bad > 0) {
+            cli_alert_info(paste0(
+            "- Number of 'bad' estimates: ", n_bad, 
+            " (", round(100*n_bad/length(vector), 2), "% of given values)"
+            ))
+        }
+    } else if (mode == "quick") {
+        if (is.null(bad)) {
+            cli_alert_info(paste0(
+                n_good, " (", round(100*n_good/length(vector), 2), "%) are good ",
+                "and ", n_bad ," (", round(100*n_bad/length(vector), 2),"%) are bad."))
+        } else {
+            cli_alert_info(paste0(
+                n_good, " (", round(100*n_good/length(vector), 2), "%) are good, ",
+                n_acceptable, " (", round(100*n_acceptable/length(vector), 2), "%) are acceptable ",
+                "and ", n_bad ," (", round(100*n_bad/length(vector), 2),"%) are bad."))
+        }
+        
+    }
+
 }
