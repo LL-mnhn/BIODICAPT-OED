@@ -23,6 +23,7 @@ data/preprocessed_data/*
 # Results - hide large files...
 outputs/results/STOC-OED/base-models/*
 # ...keep small files as examples
+!outputs/results/STOC-OED/base-models/base_average_performances.pdf
 !outputs/results/STOC-OED/base-models/base-model_none-random-effect_k1
 !outputs/results/STOC-OED/base-models/base-model_none-random-effect_k1/**
 !outputs/results/STOC-OED/base-models/base-model_units-random-effect_k1
