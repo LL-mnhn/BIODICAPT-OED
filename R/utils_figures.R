@@ -224,6 +224,9 @@ ggplot_categorical_df_on_background_map <- function(
 #   - LON: a string. The name of the column with longitude values.
 #   - LAT: a string. The name of the column with latitude values.
 #   - column: a string (optional). The name of a column with quantitative values.
+#   - unit: a string. A label that will be shown along the palette displayed.
+#   - limits: a vector of 2 values (optional). Imposes hard limits on the values considered by the palette.
+#   - precision_auto_limits: when limits is NULL, precision of color scale (values are rounded to closest precision_auto_limits)
 ggplot_quantitative_df_on_background_map <- function(
         background_map, 
         df, 
@@ -232,7 +235,7 @@ ggplot_quantitative_df_on_background_map <- function(
         column = NULL,
         unit = NULL,
         limits = NULL,
-        precision_auto_limits = 1) {
+        precision_auto_limits = 1e-5) {
        
     # make sure that coordinates are in the right coordinates system
     data <- st_as_sf(df, coords = c(LON, LAT), crs = 4326)
@@ -313,14 +316,15 @@ ggplot_quantitative_df_on_background_map <- function(
 #   - raster: a raster or the path to a raster.
 #   - layer_name: a string. The name of the layer containing the values to show.
 #   - unit: a string. A label that will be shown along the palette displayed.
-#   - limits: a vector of 2 values (optional). Imposes hard limits on the values considered by the palette. If not given, takes values that are multiples of 5.
+#   - limits: a vector of 2 values (optional). Imposes hard limits on the values considered by the palette.
+#   - precision_auto_limits: when limits is NULL, precision of color scale (values are rounded to closest precision_auto_limits)
 ggplot_quantitative_raster_on_background_map <- function(
         background_map, 
         raster,
         layer_name,
         unit = "°C",
         limits = NULL,
-        precision_auto_limits = 1){
+        precision_auto_limits = 1e-5){
     if (class(raster)[1] == "character") {
         # convert to dataframe for ggplot2
         raster <- rast(raster)  
@@ -364,14 +368,16 @@ ggplot_quantitative_raster_on_background_map <- function(
 #   - background_map: a ggplot object. The background map that will be used.
 #   - shapefile: a shapefile.
 #   - layer_name: a string. The name of the layer containing the values to show.
-#   - color_df: a dataframe. Contains columns "Value", "hex" 
+#   - unit: a string. A label that will be shown along the palette displayed.
+#   - limits: a vector of 2 values (optional). Imposes hard limits on the values considered by the palette.
+#   - precision_auto_limits: when limits is NULL, precision of color scale (values are rounded to closest precision_auto_limits)
 ggplot_quantitative_shapefile_on_background_map <- function(
     background_map,
     shapefile,
     layer_name,
     unit="°C",
     limits=NULL,
-    precision_auto_limits = 1) {
+    precision_auto_limits = 1e-5) {
 
     if (is.vector(limits) && length(limits) == 2){
         low_limit <- limits[1]

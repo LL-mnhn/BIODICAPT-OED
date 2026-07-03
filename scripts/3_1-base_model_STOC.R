@@ -98,13 +98,7 @@ split_points_k_fold_subsets <- function(df) {
     }
 
     # Storing IDs in list (instead of full dataframes) to save storage
-    k_fold_list <- list(
-        training_points = list(),                   # train set
-        training_squares_unknown_points = list(),   # val set
-        new_pool_points = list(),                   # train OED set
-        new_pool_squares_unknown_points = list(),   # val OED set
-        test_points = list()                        # test set
-    )
+    k_fold_list <- list()
     for (k in seq(K_FOLD)) {
         # select squares
         random_order <- sample(
@@ -544,11 +538,13 @@ map_results_hmsc <- function(r_effect = "none", k_fold = 1, sp = "Sylvia_atricap
 
     # Predictions are DISTRIBUTIONS: let's take the average for each point
     cli_alert_info("Converting distributions to point average...")
-    full_preds_avg_occurrence <- apply(
+    full_preds_avg <- apply(
         simplify2array(full_preds_list), c(1,2), mean)
+    full_preds_sd <- apply(
+        simplify2array(full_preds_list), c(1,2), sd)
     stoc_df_preds <- stoc_df |>
-        mutate(suitability = full_preds_avg_occurrence[, sp]) |>
-        mutate(uncertainty = 1-abs(suitability - 0.5) * 2) |>
+        mutate(suitability = full_preds_avg[, sp]) |>
+        mutate(uncertainty = full_preds_sd[, sp]) |>
         mutate(subset = ifelse(
             id_point_annee %in% k_fold_points$training_points[[k_fold]], 
             "train",
@@ -605,7 +601,7 @@ map_results_hmsc <- function(r_effect = "none", k_fold = 1, sp = "Sylvia_atricap
             LON = "LON",
             LAT = "LAT",
             idp = 2,           
-            maxdist_m = 100  )
+            maxdist_m = 100)
     p1.2 <- ggplot_quantitative_shapefile_on_background_map(
         background_map = ggplot_get_france_base_map("national"),
         shapefile = shp1.2,
@@ -628,7 +624,7 @@ map_results_hmsc <- function(r_effect = "none", k_fold = 1, sp = "Sylvia_atricap
             LON = "LON",
             LAT = "LAT",
             column = "uncertainty",
-            unit = paste0("Rough uncertainty of HSI for ", sp)) +
+            unit = paste0("Standard deviation of HSI for ", sp)) +
         labs(caption = "HSI = 'Habitat Suitability Index'")
     print(p2.1)
     standardised_ggplot_save(
@@ -646,9 +642,9 @@ map_results_hmsc <- function(r_effect = "none", k_fold = 1, sp = "Sylvia_atricap
         background_map = ggplot_get_france_base_map("national"),
         shapefile = shp2.2,
         layer_name = "interpolated_value",
-        unit = paste0("Rough uncertainty of HSI for ", sp),
+        unit = paste0("Standard deviation of HSI for ", sp),
         limits = NULL,
-        precision_auto_limits = 1) +
+        precision_auto_limits = 1e-5) +
         labs(caption = "HSI = 'Habitat Suitability Index'")
     print(p2.2)
     standardised_ggplot_save(
