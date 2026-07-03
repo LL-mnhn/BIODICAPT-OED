@@ -168,7 +168,7 @@ ggplot_categorical_df_on_background_map <- function(
             )))
         } else {
             # make plot
-            map_obs <- background_map +
+            map_obs <- suppressMessages(background_map +
                 geom_sf(
                     data = data,
                     stroke = 0.8,
@@ -189,14 +189,14 @@ ggplot_categorical_df_on_background_map <- function(
                 ) +
                 coord_sf(
                     xlim = c(LON_MIN, LON_MAX),
-                    ylim = c(LAT_MIN, LAT_MAX)
-                )
+                    ylim = c(LAT_MIN, LAT_MAX))
+            )
         }
         return(my_custom_ggplot_theme(map_obs, with_palette = TRUE))
         
     } else {
         # make plot
-        map_obs <- background_map +
+        map_obs <- suppressMessages(background_map +
             geom_sf(
                 data = data,
                 size = SIZES[1],
@@ -211,8 +211,8 @@ ggplot_categorical_df_on_background_map <- function(
             ) +
             coord_sf(
                 xlim = c(LON_MIN, LON_MAX),
-                ylim = c(LAT_MIN, LAT_MAX)
-            )
+                ylim = c(LAT_MIN, LAT_MAX))
+        )
         return(my_custom_ggplot_theme(map_obs, with_palette = FALSE))
     }
 }
@@ -255,7 +255,7 @@ ggplot_quantitative_df_on_background_map <- function(
 
         
         # make plot
-        map_obs <- background_map +
+        map_obs <- suppressMessages(background_map +
             geom_sf(
                 data = data,
                 stroke = 0.8,
@@ -280,12 +280,13 @@ ggplot_quantitative_df_on_background_map <- function(
             coord_sf(
                 xlim = c(LON_MIN, LON_MAX),
                 ylim = c(LAT_MIN, LAT_MAX))
+        )
         
         return(my_custom_ggplot_theme(map_obs, with_palette = FALSE))
         
     } else {
         # make plot
-        map_obs <- background_map +
+        map_obs <- suppressMessages(background_map +
             geom_sf(
                 data = data,
                 size = SIZES[1],
@@ -300,8 +301,8 @@ ggplot_quantitative_df_on_background_map <- function(
             ) +
             coord_sf(
                 xlim = c(LON_MIN, LON_MAX),
-                ylim = c(LAT_MIN, LAT_MAX)
-            )
+                ylim = c(LAT_MIN, LAT_MAX))
+        )
         return(my_custom_ggplot_theme(map_obs, with_palette = FALSE))
     }
 }
@@ -340,7 +341,7 @@ ggplot_quantitative_raster_on_background_map <- function(
         stop(paste("'limits' is not recognised. Expected vector of length 2 or NULL, got", limits))
     }
 
-    map_quantity_grid <- background_map +
+    map_quantity_grid <- suppressMessages(background_map +
         geom_raster(
             data = raw_df, 
             alpha = 0.8,
@@ -353,6 +354,7 @@ ggplot_quantitative_raster_on_background_map <- function(
         coord_sf(
             xlim = c(LON_MIN, LON_MAX), 
             ylim = c(LAT_MIN, LAT_MAX))
+    )
     
     return(my_custom_ggplot_theme(map_quantity_grid, with_palette = FALSE))
 }
@@ -382,7 +384,7 @@ ggplot_quantitative_shapefile_on_background_map <- function(
         stop(paste("'limits' is not recognised. Expected vector of length 2 or NULL, got", limits))
     }
 
-    map_quantity_grid <- background_map +
+    map_quantity_grid <- suppressMessages(background_map +
         geom_sf(
             data = shapefile,
             alpha = 0.8,
@@ -400,6 +402,7 @@ ggplot_quantitative_shapefile_on_background_map <- function(
         coord_sf(
             xlim = c(LON_MIN, LON_MAX), 
             ylim = c(LAT_MIN, LAT_MAX))
+    )
 
     return(my_custom_ggplot_theme(map_quantity_grid, with_palette = FALSE))
 }
@@ -441,7 +444,7 @@ ggplot_categorical_raster_on_background_map <- function(
     )
 
     # make ggplot
-    map_category_grid <- background_map +
+    map_category_grid <- suppressMessages(background_map +
         geom_raster(
             data = df, 
             alpha = 0.8,
@@ -457,6 +460,7 @@ ggplot_categorical_raster_on_background_map <- function(
         coord_sf(
             xlim = c(LON_MIN, LON_MAX), 
             ylim = c(LAT_MIN, LAT_MAX))
+    )
 
     return(my_custom_ggplot_theme(map_category_grid, with_palette = FALSE))
 }
@@ -479,7 +483,7 @@ ggplot_categorical_shapefile_on_background_map <- function(
     label_key <- setNames(color_df[[label_layer_name]], color_df$Value)
     
     # make ggplot
-    map_category_grid <- background_map +
+    map_category_grid <- suppressMessages(background_map +
         geom_sf(
             data = shapefile, 
             alpha = 0.8,
@@ -500,7 +504,8 @@ ggplot_categorical_shapefile_on_background_map <- function(
         coord_sf(
             xlim = c(LON_MIN, LON_MAX), 
             ylim = c(LAT_MIN, LAT_MAX))
-
+    )
+    
     return(my_custom_ggplot_theme(map_category_grid, with_palette = FALSE))
 }
 
@@ -603,7 +608,6 @@ ggplot_custom_draftman <- function(
 #   - category: a string. The name of a column to color the histograms with (default is NULL, no color added).
 #   - bins: A numeric. Controls the number of bins (default is 1).
 #   - breaks: A numeric. Default is NULL (not toggled) if given, overwrites bins.
-# @export
 ggplot_bars <- function(df, x, category = NULL, bins = 10, breaks = NULL, underlayers = NULL) {
   if (is.null(category)) {
     graph <- ggplot(data = df, aes(x = .data[[x]])) +
@@ -621,7 +625,7 @@ ggplot_bars <- function(df, x, category = NULL, bins = 10, breaks = NULL, underl
   return(my_custom_ggplot_theme(graph, with_palette = TRUE))
 }
 
-# A function that mimicks MCMCtrace
+# A function that mimicks MCMCvis::MCMCtrace
 # ARGS:
 #   - mcmc_chains: self-explanatory. (e.g. with hmsc: transform to conda then run `ggplot_custom_MCMCtrace(coda_hmsc$Beta)`).
 #   - show_Rhat: a boolean. If TRUE (default) computes and displays Rhat at the bottom of the plot. It is a value used for convergence diagnostic (usually, we consider that the chains converged if Rhat < 1.05, a value of Rhat > 1.1 should be concerning).

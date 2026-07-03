@@ -9,7 +9,7 @@ library(ggplot2)
 library(colorspace)
 
 
-### Global variables ---------------------------------------------------
+### Global variables ----------------------------------------------------------
 OBS_YEAR <- "2018"  # Most recent year for CLC dataset
 RES_KM <- 10        # best compromise I think
 # Values for map extent (France limits with buffer, in CRS 4326)
@@ -19,7 +19,7 @@ LAT_MIN <- 41.35
 LAT_MAX <- 51.05
 
 
-### Global paths -------------------------------------------------------
+### Global paths --------------------------------------------------------------
 RAW_DATA_PATH <- file.path("data", "raw_data")
 PROCESSED_DATA_PATH <- file.path("data", "preprocessed_data")
 FIGURES_PATH <- file.path("outputs", "figures")
@@ -27,7 +27,7 @@ RESULTS_PATH <- file.path("outputs", "results")
 # SIMULATION_PATH <- file.path("outputs", "simulation")
 
 
-### File paths ---------------------------------------------------------
+### File paths ----------------------------------------------------------------
 ## Raw data
 # BIODICAPT Dataset
 BIODICAPT_FOLDER <- file.path(RAW_DATA_PATH, "BIODICAPT_pos")
@@ -89,7 +89,7 @@ NAMES_SPECIES <- c(
 )
 
 
-### Plot styling -------------------------------------------------------
+### Plot styling --------------------------------------------------------------
 FONT <- "Lexend"
 PALETTE <- c("#D9054E", "#28A349", "#246CBC", 
              "#5D7B84", "#C2562F", "#FFB703")

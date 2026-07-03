@@ -30,7 +30,7 @@ The transition from the first phase to the second involves a significant shift i
 │   └── results             # Statistical outputs and reports
 ├── renv                    # Information about R environment (packages)
 ├── DESCRIPTION             # Standard DESCRIPTION file for R packages
-├── README.md               # This file
+└── README.md               # This file
 ```
 
 ### Progress tracker

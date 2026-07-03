@@ -1,17 +1,17 @@
 # This script is used to find the "base" model that will be used to 
 # compute OED on STOC data
 ##### Libraries ##### ---------------------------------------------------------
-suppressMessages(suppressWarnings(library(Hmsc)))
-suppressMessages(suppressWarnings(library(dplyr)))
-suppressMessages(suppressWarnings(library(readr)))
-suppressMessages(suppressWarnings(library(cli)))
-suppressMessages(suppressWarnings(library(sf)))
-suppressMessages(suppressWarnings(library(patchwork)))
-suppressMessages(suppressWarnings(library(MCMCvis)))
-suppressMessages(suppressWarnings(library(reshape2)))
-suppressMessages(suppressWarnings(library(ggplot2)))
-suppressMessages(suppressWarnings(library(tidyr)))
-suppressMessages(suppressWarnings(library(abind)))
+suppressPackageStartupMessages(library(Hmsc))
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(readr))
+suppressPackageStartupMessages(library(cli))
+suppressPackageStartupMessages(library(sf))
+suppressPackageStartupMessages(library(patchwork))
+suppressPackageStartupMessages(library(MCMCvis))
+suppressPackageStartupMessages(library(reshape2))
+suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(tidyr))
+suppressPackageStartupMessages(library(abind))
 
 suppressMessages(suppressWarnings(source(here::here("R/utils_models.R"))))
 suppressMessages(suppressWarnings(source(here::here("R/utils_figures.R"))))
@@ -21,51 +21,13 @@ suppressMessages(suppressWarnings(source(here::here("R/utils_data.R"))))
 
 ##### Parameters ##### --------------------------------------------------------
 source(here::here("data/config/config.R")) # Import global parameters
-
-### Paths
-PATH_LOCAL_RESULTS = file.path(RESULTS_PATH, "STOC-OED")
+source(here::here("data/config/config-STOC.R")) # Import local parameters
 
 ### Dataset
-set.seed(496) # tfor reproducible results
-X_VARIABLES <- c("p_milieu", "tmp_spring", "precip_spring") # custom selection
-X_GROUPS <- c(1, 2, 2) # Group above variables in different categories
-X_GROUPS_NAMES <- c("niche", "climate") # names associated with X_GROUPS categories
-Y_SPECIES <- c("Sylvia_atricapilla", "Fringilla_coelebs", "Pica_pica", 
-    "Periparus_ater", "Carduelis_cannabina") # can be NULL (all species)
-X_FACTORS <- ("p_milieu") # just to be sure of column types
-
-### Split parameters
-TRAIN_SIZE <- 125 # Number of point used for training
-NEW_POOL_SIZE <- 500 # Number of points from which we can pick for OED
-NEW_SAMPLE_SIZE <- 50 # Number of points we can sample in new pool during OED
-K_FOLD <- 5
-
-### Parameters for HMSC
-HMSC_XFORMULA <- ~ p_milieu + tmp_spring + precip_spring
-
-SAMPLES <- 5000 # mcmc will stop after saving that much samples
-THIN <- 2 # number of steps between each recording
-TRANSIENT <- 0.5*SAMPLES*THIN # burn-in iterations
-CHAINS <- 3
-
-### OED
-
+set.seed(496) # for reproducible results
 
 
 ##### Helper functions ##### --------------------------------------------------
-check_dataset <- function(path) {
-    cli_alert_info(paste0("Checking ", basename(path),"..."))
-
-    if (!file.exists(path)) {
-        cli_alert_danger(paste0("File '", path, "' not found!\n"))
-        stop(paste0("Tip: did you run `1-pre_processing.R` and ",
-        "`2-feature_aggregation.R`?"))
-    }
-
-    cli_alert_success("File is available.\n\n")
-    return(read_csv(STOC_OBS_FULL, show_col_types = FALSE))
-}
-
 explore_dataset <- function(df, top = 5) {
     ### NUMERICS
     cli_alert_info("Exploration of dataset.")
@@ -137,10 +99,11 @@ split_points_k_fold_subsets <- function(df) {
 
     # Storing IDs in list (instead of full dataframes) to save storage
     k_fold_list <- list(
-        training_points = list(),
-        new_pool_points = list(),
-        known_squares_test_points = list(),
-        unknown_squares_test_points = list()
+        training_points = list(),                   # train set
+        training_squares_unknown_points = list(),   # val set
+        new_pool_points = list(),                   # train OED set
+        new_pool_squares_unknown_points = list(),   # val OED set
+        test_points = list()                        # test set
     )
     for (k in seq(K_FOLD)) {
         # select squares
@@ -149,31 +112,38 @@ split_points_k_fold_subsets <- function(df) {
         train_carre <- random_order[1:TRAIN_SIZE]
         new_pool_carre <- random_order[(TRAIN_SIZE+1):(TRAIN_SIZE+NEW_POOL_SIZE)]
 
-        # for training and new pool : select one point per square
-        train_points <- sample(
+        # for train sets : select one point per square
+        train_pts <- sample(
             subset(df, df$carre %in% train_carre)$id_point_annee, 
             TRAIN_SIZE, 
             replace = FALSE)
-        new_pool_points <- sample(
+        new_pool_pts <- sample(
             subset(df, df$carre %in% new_pool_carre)$id_point_annee, 
             NEW_POOL_SIZE, 
             replace = FALSE)
 
-        # for test : select all remaining points
-        train_pool_df <- subset(
-            df, df$carre %in% c(train_carre, new_pool_carre))
-        test_known_squares_points <- subset(
-            train_pool_df, 
-            !train_pool_df$id_point_annee %in% c(train_points, new_pool_points)
-        )$id_point_annee
+        # for validation sets : select remaining points in each square
+        train_square_df <- subset(df, df$carre %in% train_carre)
+        val_train_pts <- subset(
+            train_square_df, 
+            !train_square_df$id_point_annee %in% train_pts)$id_point_annee
+
+        pool_square_df <- subset(df, df$carre %in% new_pool_carre)
+        val_pool_pts <- subset(
+            pool_square_df, 
+            !pool_square_df$id_point_annee %in% new_pool_pts)$id_point_annee
+        
+
+        # for test : select squares not seen before
         test_never_seen_points <- subset(
             df, !df$carre %in% c(train_carre, new_pool_carre))$id_point_annee
 
         # assign values to lists
-        k_fold_list$training_points[[k]] <- train_points
-        k_fold_list$new_pool_points[[k]] <- new_pool_points
-        k_fold_list$known_squares_test_points[[k]] <- test_known_squares_points
-        k_fold_list$unknown_squares_test_points[[k]] <- test_never_seen_points
+        k_fold_list$training_points[[k]] <- train_pts
+        k_fold_list$new_pool_points[[k]] <- new_pool_pts
+        k_fold_list$val_training_points[[k]] <- val_train_pts
+        k_fold_list$val_new_pool_points[[k]] <- val_pool_pts
+        k_fold_list$test_points[[k]] <- test_never_seen_points
     }
 
     cli_alert_success("Point ID of splits are ready for each split!\n\n")
@@ -200,7 +170,7 @@ prepare_training <- function(subset, random_effect = "none"){
         hmsc_object <- Hmsc(
             Y = Y, XData = XData, 
             XFormula = HMSC_XFORMULA, 
-            distr = "probit",           # For occurence data
+            distr = "probit",           # For occurence data (among "normal", "probit", "poisson", "lognormal poisson")
             studyDesign = studyDesign)
         
     } else if (random_effect == "units") {
@@ -488,8 +458,7 @@ compare_hmsc_performances <- function(save_folder) {
             # 0. Setup
             r_effect <- r_effects[r]
             path_local_scores <- file.path(
-                PATH_LOCAL_RESULTS, 
-                "base-models",
+                PATH_LOCAL_BASE,
                 paste0("base-model_", r_effect, "-random-effect_k", k))
 
 
@@ -556,18 +525,17 @@ compare_hmsc_performances <- function(save_folder) {
     return(aggregated_df)
 }
 
-# TODO: need KFOLD list (not saved for now... But i need it!!!!, re-run whole script)
 map_results_hmsc <- function(r_effect = "none", k_fold = 1, sp = "Sylvia_atricapilla") {
     cli_alert_info("Mapping results on whole dataset...")
     cli_alert_info(paste0("\tRandom effect: ", r_effect))
     cli_alert_info(paste0("\tK_fold: ", k_fold))
     local_folder <- file.path(
-            PATH_LOCAL_RESULTS, 
-            "base-models", 
+            PATH_LOCAL_BASE,
             paste0("base-model_", r_effect, "-random-effect_k", k_fold))
     load(file.path(local_folder, "train_outputs.Rda")) # loads `fitted.hmsc`
     load(file.path(PATH_LOCAL_RESULTS, "k_fold_points.Rda")) # loads `k_fold_points`
 
+    cli_alert_info("Making predictions, can take a few minutes...")
     full_preds_list <- predict_hmsc(
         hM = fitted.hmsc,
         df = stoc_df,
@@ -585,7 +553,7 @@ map_results_hmsc <- function(r_effect = "none", k_fold = 1, sp = "Sylvia_atricap
             id_point_annee %in% k_fold_points$training_points[[k_fold]], 
             "train",
             ifelse(
-                id_point_annee %in% k_fold_points$known_squares_test_points[[k_fold]], 
+                id_point_annee %in% k_fold_points$val_training_points[[k_fold]], 
                 "val", 
                 "test")))
     # To cite 10.5281/ZENODO.11067678: "The models cannot provide a direct 
@@ -594,44 +562,98 @@ map_results_hmsc <- function(r_effect = "none", k_fold = 1, sp = "Sylvia_atricap
     cli_alert_info(paste0("\tSelected species: ", sp))
 
     # plot training samples
-    p0 <- ggplot_categorical_df_on_background_map(
+    p0.1 <- ggplot_categorical_df_on_background_map(
         background_map = ggplot_get_france_base_map("national"), 
-        df = stoc_df_preds, 
+        df = stoc_df_preds |> filter(subset == "train"), 
         LON = "LON",
         LAT = "LAT",
-        column = "subset",
-        legend_title = "Sampling location")
-    print(p0)
+        column = NULL,
+        legend_title = "Training location")
+    print(p0.1)
     standardised_ggplot_save(
-        figure = p0, 
+        figure = p0.1, 
         save_path = file.path(local_folder, "training_samples.pdf"))
+    p0.2 <- ggplot_categorical_df_on_background_map(
+        background_map = ggplot_get_france_base_map("national"), 
+        df = stoc_df_preds |> filter(subset == "test"), 
+        LON = "LON",
+        LAT = "LAT",
+        column = NULL,
+        legend_title = "Training location")
+    print(p0.2)
+    standardised_ggplot_save(
+        figure = p0.2, 
+        save_path = file.path(local_folder, "test_samples.pdf"))
 
     # show map of suitability per site
-    p1 <- ggplot_quantitative_df_on_background_map(
+    p1.1 <- ggplot_quantitative_df_on_background_map(
             background_map = ggplot_get_france_base_map("national"), 
             df = stoc_df_preds, 
             LON = "LON",
             LAT = "LAT",
             column = "suitability",
             unit = paste0("Estimated HSI for ", sp)) +
-        labs(captions = "HSI = 'Habitat Suitability Index'")
-    print(p1)
+        labs(caption = "HSI = 'Habitat Suitability Index'")
+    print(p1.1)
     standardised_ggplot_save(
-        figure = p1, 
+        figure = p1.1, 
         save_path = file.path(local_folder, "suitability_for_species.pdf"))
+    shp1.2 <- interpolate_scattered_points_to_hexagons(
+            df = stoc_df_preds,  
+            column = "suitability",
+            res_km = RES_KM, 
+            LON = "LON",
+            LAT = "LAT",
+            idp = 2,           
+            maxdist_m = 100  )
+    p1.2 <- ggplot_quantitative_shapefile_on_background_map(
+        background_map = ggplot_get_france_base_map("national"),
+        shapefile = shp1.2,
+        layer_name = "interpolated_value",
+        unit = paste0("Estimated HSI for ", sp),
+        limits = NULL,
+        precision_auto_limits = 1) +
+        labs(caption = "HSI = 'Habitat Suitability Index'")
+    print(p1.2)
+    standardised_ggplot_save(
+        figure = p1.2, 
+        save_path = file.path(local_folder, "suitability_for_species_hexagons.pdf"))    
+    
+    
 
     # show map of uncertainty per site (function of suitability)
-    p2 <- ggplot_quantitative_df_on_background_map(
+    p2.1 <- ggplot_quantitative_df_on_background_map(
             background_map = ggplot_get_france_base_map("national"), 
             df = stoc_df_preds, 
             LON = "LON",
             LAT = "LAT",
             column = "uncertainty",
-            unit = paste0("Rough uncertainty of HSI for ", sp))
-    print(p2)
+            unit = paste0("Rough uncertainty of HSI for ", sp)) +
+        labs(caption = "HSI = 'Habitat Suitability Index'")
+    print(p2.1)
     standardised_ggplot_save(
-        figure = p2, 
+        figure = p2.1, 
         save_path = file.path(local_folder, "certainty_of_suitability.pdf"))
+    shp2.2 <- interpolate_scattered_points_to_hexagons(
+            df = stoc_df_preds,  
+            column = "uncertainty",
+            res_km = RES_KM, 
+            LON = "LON",
+            LAT = "LAT",
+            idp = 2,           
+            maxdist_m = 100)
+    p2.2 <- ggplot_quantitative_shapefile_on_background_map(
+        background_map = ggplot_get_france_base_map("national"),
+        shapefile = shp2.2,
+        layer_name = "interpolated_value",
+        unit = paste0("Rough uncertainty of HSI for ", sp),
+        limits = NULL,
+        precision_auto_limits = 1) +
+        labs(caption = "HSI = 'Habitat Suitability Index'")
+    print(p2.2)
+    standardised_ggplot_save(
+        figure = p2.2, 
+        save_path = file.path(local_folder, "certainty_of_suitability_hexagons.pdf"))    
 
     return(stoc_df_preds)
 }
@@ -663,19 +685,16 @@ cli_alert_info("------------ Fitting base models ------------\n\n")
 for (k in seq(K_FOLD)) {
     cli_alert_warning(paste0("---- k-fold iteration: ", k, "/", K_FOLD, "----\n\n"))
 
-    ### prepare subsets (dummy loop for wrapping this section)
-    if (TRUE) {
-        train_subset <- subset(
-            stoc_df, 
-            stoc_df$id_point_annee %in% k_fold_points$training_points[[k]])
-        val_subset <- subset(
-            stoc_df, 
-            stoc_df$id_point_annee %in% k_fold_points$known_squares_test_points[[k]])
-        test_subset <- subset(
-            stoc_df, 
-            stoc_df$id_point_annee %in% k_fold_points$unknown_squares_test_points[[k]])
-        
-    }
+    ### prepare subsets
+    train_subset <- subset(
+        stoc_df, 
+        stoc_df$id_point_annee %in% k_fold_points$training_points[[k]])
+    val_subset <- subset(
+        stoc_df, 
+        stoc_df$id_point_annee %in% k_fold_points$val_training_points[[k]])
+    test_subset <- subset(
+        stoc_df, 
+        stoc_df$id_point_annee %in% k_fold_points$test_points[[k]])
 
     ### test model with and without random effects
     r_effects <- c("none", "units") # "spatial" is available but way longer to run
@@ -683,8 +702,7 @@ for (k in seq(K_FOLD)) {
         # 0. Setup
         r_effect <- r_effects[r]
         path_local_model_results <- file.path(
-            PATH_LOCAL_RESULTS, 
-            "base-models",
+            PATH_LOCAL_BASE,
             paste0("base-model_", r_effect, "-random-effect_k", k))
         dir.create(path_local_model_results, recursive = TRUE)
         cli_alert_info(paste0(r, ".0. Setting up model."))
@@ -739,7 +757,7 @@ for (k in seq(K_FOLD)) {
 
 ##### Compare performances ##### ----------------------------------------------
 cli_alert_info("------------ Results ------------\n\n")
-agg_scores_df <- compare_hmsc_performances(file.path(PATH_LOCAL_RESULTS, "base-models"))
+agg_scores_df <- compare_hmsc_performances(PATH_LOCAL_BASE)
 
 cli_alert_info(
     "Given the results, there is little to no difference in prediction power ",
@@ -751,4 +769,6 @@ cli_alert("Training base model on whole dataset...")
 
 ##### Predict on map of france ##### ------------------------------------------
 cli_alert_info("------------ Distribution map (example) ------------\n\n")
-a <- map_results_hmsc()
+for (k in seq(K_FOLD)) {
+    a <- map_results_hmsc(k_fold = k)
+}

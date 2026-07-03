@@ -9,6 +9,7 @@ library(dggridR)
 library(readxl)
 library(readr)
 library(dplyr)
+library(gstat)
 library(terra)
 library(purrr)
 library(tools)
@@ -352,6 +353,70 @@ project_to_hexagons <- function(raster, save_to, res_km, method, verbose = TRUE)
     
 }
 
+# A function to transform a dataframe of points to a shapefile of hexagons, through interpolation of missing values.
+# ARGS:
+#   - df: a dataframe. Must contain "LON" (longitude, WGS84) and "LAT" (latitude, WGS84) and "column".
+#   - column: a string. The name of the column containing the values for interpolation.
+#   - res_km: an integer/a float. The size of each hexagon on the grid (in km, approximative).
+#   - LON: a string. The name of the column with longitude values.
+#   - LAT: a string. The name of the column with latitude values. 
+#   - idp: a numeric. Specifies the inverse distance weighting power. (lower = finer influence, higher = smoother)
+#   - maxdist_m: a numeric. Only observations within a distance of maxdist from the prediction location are used for prediction or simulation.
+interpolate_scattered_points_to_hexagons <- function(
+        df,  
+        column,
+        res_km = RES_KM, 
+        LON = "LON",
+        LAT = "LAT",   
+        idp = 2,             
+        maxdist_m = Inf) {
+    method <-  "idw"
+
+    # 1. Build hexagon grid (same as project_to_hexagons)
+    invisible(capture.output(dggs <- dgconstruct(
+        spacing = res_km, metric = TRUE, resround = 'nearest')))
+    france_sf <- get_metropolitan_france_shapefile()
+    france_sf_buffered <- france_sf |>
+        st_transform(2154) |>
+        st_buffer(dist = 2*res_km*1000) |>
+        st_transform(crs("EPSG:4326"))
+
+    lat_mean <- (LAT_MIN + LAT_MAX) / 2
+    res_lat <- res_km / 111.0
+    res_lon <- res_km / (111.0 * cos(lat_mean * pi / 180))
+
+    full_grid <- dgshptogrid(
+        dggs, france_sf_buffered, cellsize = min(res_lat, res_lon)/2)
+
+    full_grid$hex_area <- st_area(full_grid)
+    hex_clipped <- st_intersection(full_grid, france_sf_buffered)
+    hex_clipped$clipped_area <- st_area(hex_clipped)
+    hex_filtered <- hex_clipped[
+        as.numeric(hex_clipped$clipped_area / hex_clipped$hex_area) >= 0.5, ]
+    hex_grid <- full_grid[full_grid$seqnum %in% hex_filtered$seqnum, ]
+
+    # 2. Points as sp object (gstat predates sf and still expects Spatial*)
+    points_sf <- st_as_sf(df, coords = c(LON, LAT), crs = 4326)
+    points_sp <- as(points_sf, "Spatial")
+
+    # 3. Interpolate onto hexagon centroids
+    hex_centroids <- st_centroid(hex_grid)
+    centroids_sp <- as(hex_centroids, "Spatial")
+
+    formula <- as.formula(paste(column, "~ 1"))
+
+    if (method == "idw") {
+        invisible(capture.output(interp <- idw(
+            formula, points_sp, 
+            newdata = centroids_sp, idp = idp, maxdist = maxdist_m)))
+        hex_grid$interpolated_value <- interp$var1.pred
+    } else {
+        stop(paste0("Unknown method: '", method, "'. Use 'idw' or 'kriging'."))
+    }
+
+    return(hex_grid)
+}
+
 # A function to aggregate rasters together (months -> year) with buffer around borders
 # ARGS:
 #   - raster_paths: filepaths to 12 *similar* rasters.
@@ -516,104 +581,4 @@ simplify_CLC <- function(
         cli_alert_success("Re-classified CLC2018 is ready!")
     }
     return(clc_raster_collapsed)
-}
-
-
-# A function to automatise verbose interpretation of diagnostic vectors
-# ARGS:
-#   - vector: a vector of values to analyse.
-#   - bad: a numeric. The threshold under which values reveal a bad fit.
-#   - good: a numeric. The threshold over which values reveal a good fit.
-#   - order: a string. Indicates if lower is better ("low_better", default) or higer is bette (high_better).
-#   - mode: a sting. Indicates if showing full analysis ("full", default) or a quick 1-line summary ("quick").
-interpret_diagnostics <- function(
-    vector, 
-    good, 
-    bad = NULL, 
-    mode = "full",
-    order = "low_better") {
-    
-    if (order == "low_better") {
-        n_good <- sum(vector < good)    
-
-        if (is.null(bad)) {
-            n_bad <- sum(vector > good)
-            if (mode == "full") {
-                cli_alert_info(paste0(
-                    "Rule of thumb: <", good," (good)"))
-            }
-
-            n_acceptable <- 0
-        } else {
-            n_acceptable <- sum((vector > good) & (vector < bad))
-            n_bad <- sum(vector > bad)    
-            if (mode == "full") {
-                cli_alert_info(paste0(
-                    "Rule of thumb: <", good," (good), ",
-                    good, "-", bad, ", (acceptable), >",
-                    bad, " (bad)"))
-            }
-        }
-        
-    } else if (order == "high_better") {
-        n_good <- sum(vector > good)    
-
-        if (is.null(bad)) {
-            n_bad <- sum(vector < good)  
-            if (mode == "full") {
-                cli_alert_info(paste0(
-                    "Rule of thumb: >", good," (good)"))
-            }
-
-            n_acceptable <- 0
-        } else {
-            n_acceptable <- sum((vector < good) & (vector > bad))
-            n_bad <- sum(vector < bad)
-            if (mode == "full") {
-                cli_alert_info(paste0(
-                    "Rule of thumb: >", good," (good), ",
-                    good, "-", bad, ", (acceptable), <",
-                    bad, " (bad)"))   
-            }
-        }
-     
-    }
-    else {
-        stop(paste0("Mode should be one of 'low_better' or 'high_better'. ",
-        "Got '", mode, "' ."))
-    }
-    
-    if (mode == "full") {
-        if (n_good > 0) {
-            cli_alert_success(paste0(
-            "- Number of 'good' estimates: ", n_good, 
-            " (", round(100*n_good/length(vector), 2), "% of given values)"
-            ))
-        }
-        if ((n_acceptable > 0) & !(is.null(bad))) {
-            cli_alert_info(paste0(
-            "- Number of 'acceptable' estimates: ", n_acceptable, 
-            " (", round(100*n_acceptable/length(vector), 2), "% of given values)"
-            ))  
-        }
-        if (n_bad > 0) {
-            cli_alert_info(paste0(
-            "- Number of 'bad' estimates: ", n_bad, 
-            " (", round(100*n_bad/length(vector), 2), "% of given values)"
-            ))
-        }
-    } else if (mode == "quick") {
-        if (is.null(bad)) {
-            cli_alert_info(paste0(
-                n_good, " (", round(100*n_good/length(vector), 2), "%) are good ",
-                "and ", n_bad ," (", round(100*n_bad/length(vector), 2),"%) are bad."))
-        } else {
-            cli_alert_info(paste0(
-                n_good, " (", round(100*n_good/length(vector), 2), "%) are good, ",
-                n_acceptable, " (", round(100*n_acceptable/length(vector), 2), "%) are acceptable ",
-                "and ", n_bad ," (", round(100*n_bad/length(vector), 2),"%) are bad."))
-        }
-        
-    }
-
 }
