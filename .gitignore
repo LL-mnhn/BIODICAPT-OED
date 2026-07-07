@@ -20,14 +20,9 @@ data/preprocessed_data/*
 !data/preprocessed_data/MASTER_*
 !data/preprocessed_data/CHELSA_*
 
-# Results - hide large files...
-outputs/results/STOC-OED/base-models/*
-# ...keep small files as examples
-!outputs/results/STOC-OED/base-models/base_average_performances.pdf
-!outputs/results/STOC-OED/base-models/base-model_none-random-effect_k1
-!outputs/results/STOC-OED/base-models/base-model_none-random-effect_k1/**
-!outputs/results/STOC-OED/base-models/base-model_units-random-effect_k1
-!outputs/results/STOC-OED/base-models/base-model_units-random-effect_k1/**
+# Results - hide large (useless) files
+*_all_traceplots.pdf
+
 
 # Seed - hide to avoid reverse-engineering of raw_data
 data/config/seed.R
