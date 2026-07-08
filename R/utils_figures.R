@@ -1,18 +1,21 @@
 # Set of functions used to plot harmonised figures
 
 ##### Liraries #####
-library(tidyterra)
-library(terra)
-library(sf)
-library(ggplot2)
-library(GGally)
 library(colorspace)
-library(MCMCvis)
-library(coda)
+library(tidyterra)
 library(patchwork)
 library(reshape2)
+library(MCMCvis)
+library(ggplot2)
+library(GGally)
+library(dplyr)
+library(terra)
+library(coda)
+library(cli)
+library(sf)
 
 source(here::here("R/utils_data.R")) 
+
 
 ##### Parameters #####
 source(here::here("data/config/config.R")) # all parameters are grouped together
@@ -600,7 +603,7 @@ ggplot_custom_draftman <- function(
         df,
         columns = columns,
         lower = list(continuous = my_lower),
-        diag = list(continuous = wrap("densityDiag", fill = PALETTE[4], color = "black", linewidth = 0.5)),
+        diag = list(continuous = GGally::wrap("densityDiag", fill = PALETTE[4], color = "black", linewidth = 0.5)),
         upper = list(continuous = my_upper)
     )
 
@@ -717,9 +720,9 @@ ggplot_custom_MCMCtrace <- function(
 
 # A function that mimicks Hmsc::plotBeta
 # ARGS:
-#   - hM: a fitted Hmsc model object,
-#   - post: post posterior summary of Beta parameters obtained from getPostEstimate()
-#   - supportLevel: a numeric threshold for plotting, values between 0.5 and 1 (default 0.95)
+#   - hM: a fitted Hmsc model object.
+#   - post: post posterior summary of Beta parameters obtained from getPostEstimate().
+#   - supportLevel: a numeric threshold for plotting, values between 0.5 and 1 (default 0.95).
 ggplot_custom_plotBeta <- function(hM, post, supportLevel = 0.95) {
   
     # Reproduce the Support calculation from source
@@ -761,8 +764,8 @@ ggplot_custom_plotBeta <- function(hM, post, supportLevel = 0.95) {
 
 # A function that mimicks Hmsc::computeAssociations + Corplot
 # ARGS:
-#   - hM: a fitted Hmsc model object,
-#   - supportLevel: a numeric threshold for plotting, values between 0.5 and 1 (default 0.95)
+#   - hM: a fitted Hmsc model object.
+#   - supportLevel: a numeric threshold for plotting, values between 0.5 and 1 (default 0.95).
 ggplot_custom_random_corr_associations <- function(hM, supportLevel = 0.95) {
     OmegaCor = computeAssociations(hM)
     toPlot = ((OmegaCor[[1]]$support>supportLevel)
@@ -800,8 +803,8 @@ ggplot_custom_random_corr_associations <- function(hM, supportLevel = 0.95) {
 
 # A function that mimicks Hmsc::plotVariancePartitioning
 # ARGS:
-#   - hM: a fitted Hmsc model object,
-#   - VP: a matrix obtained from Hmsc::computeVariancePartitioning
+#   - hM: a fitted Hmsc model object.
+#   - VP: a matrix obtained from Hmsc::computeVariancePartitioning.
 ggplot_custom_plotVariancePartitioning <- function(hM, VP) {
 
     # Build labels with means
@@ -825,4 +828,66 @@ ggplot_custom_plotVariancePartitioning <- function(hM, VP) {
 
     return(my_custom_ggplot_theme(plot, with_palette = TRUE) +
         theme(axis.text.x  = element_text(angle = 45, hjust = 1)))
+}
+
+# A function that summarises the contents of a dataset with X variables and Y species.
+#   - df: a data.frame 
+#   - x_cols: a list of strings. The columns containing explanatory variables.
+#   - sp_cols: a list of strings. The columns containing species occurrences.
+#   - save_folder: a string. Path to a folder where "draftman_plot.pdf" will be saved.
+#   - top: a numeric (default is 5). Controls the number of species to show as most and least represented in dataset
+explore_dataset <- function(df, x_cols, sp_cols, save_folder, top = 5) {
+    ### NUMERICS
+    cli_alert_info("Exploration of dataset.")
+
+    # for fastest computation of figure: average per square ("carre")
+    draftman_df <- df |>
+        select(c("carre", all_of(x_cols))) |>
+        select(where(is.numeric)) |>
+        group_by(carre) |>
+        summarise_all(mean)
+
+    draft_plot <- ggplot_custom_draftman(
+        draftman_df, 
+        columns = setdiff(names(draftman_df), "carre"))
+    suppressMessages(print(draft_plot))
+    standardised_ggplot_save(
+        figure = draft_plot, 
+        save_path = file.path(save_folder, paste0("draftman_plot.pdf")))
+    cli_alert_success("Saved Draftman's plot.")
+
+    ### FACTORS
+    factor_df <- df |>
+        select(where(is.factor))
+
+    for (col in names(factor_df)) {
+        # for each column, compute frequence and proportion of each variable
+        freq <- table(factor_df[[col]])
+        prop <- round(freq/sum(freq), digits=3)
+        combined_table <- rbind(freq = as.vector(freq), 
+                            prop = as.vector(prop))
+
+        colnames(combined_table) <- names(freq)
+
+        cli_alert_info(paste0("Distribution of '",  col ,"' in dataset:"))
+        print(t(combined_table))
+        cli_alert_info(" ")
+    }
+
+    ### PREDICTED VARIABLES
+    # Make a table with the number of occurences
+    top_sp <- df[sp_cols] |>
+        summarise(across(where(is.numeric), sum)) |>
+        pivot_longer(everything(), names_to = "column", values_to = "sum")
+
+    # print top-x species and bottom-x species
+    cli_alert_info(paste0(
+        "Top-", top, " MOST sighted species (from occurences):"))
+    print(as.data.frame(top_sp |> slice_max(sum, n = top)))
+    cli_alert_info(" ")
+    cli_alert_info(paste0(
+        "Top-", top," LEAST sighted species (from occurences):"))
+    print(as.data.frame(top_sp |> slice_min(sum, n = top)))
+    cat("\n")
+
 }

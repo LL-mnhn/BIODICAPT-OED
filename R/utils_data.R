@@ -31,19 +31,19 @@ authorize_overwrite <- function(path, verbose = TRUE) {
     if (!file.exists(path)) {
         return(TRUE)
     } else { 
-        # if file exist, ask user
+        # if file exist, ask user for what needs to be done
         user_input <- readline(prompt = paste0(" Overwrite `", path, 
             "`? [Y/n]: "))
         cleaned_input <- tolower(trimws(user_input))
 
         if (cleaned_input %in% c("y", "yes")) {
-            # if answer is yes, return TRUE
             cli_alert_info("User authorized process to overwrite file.")
             return(TRUE)
+
         } else if (cleaned_input %in% c("n", "no")) {
-            # if answer is no, return FALSE
             cli_alert_info("User refused to allow process to overwrite.")
             return(FALSE)
+
         } else {
             # if answer cannot be identified, return FALSE
             if (verbose) {
@@ -61,12 +61,12 @@ authorize_overwrite <- function(path, verbose = TRUE) {
 #   - xlsx_paths: a list of .xlsx files.
 # WARNING: this function will only work correctly for biodicapt files.
 import_biodicapt_land_surveys <- function(xlsx_paths) {
-  
+    
+    # loop on all files and store in list
     map_dfr(xlsx_paths, function(path) {
 
-        # get main sheet index for each file.
+        # get main sheet for each file.
         sheet_index <- if (grepl("MONTPELLIER", path, fixed = TRUE)) 1 else 2
-        # load file
         df <- read_xlsx(path, sheet = sheet_index, .name_repair = "unique_quiet")
 
         # remove useless columns
@@ -86,7 +86,7 @@ import_biodicapt_land_surveys <- function(xlsx_paths) {
         } else {
             # Others: reproject from Lambert93 to WGS84
             coords <- df |>
-                st_as_sf(coords = c("X_L93", "Y_L93"), crs = 2154) |>
+                st_as_sf(coofs = c("X_L93", "Y_L93"), crs = 2154) |>
                 st_transform(crs = 4326) |>
                 st_coordinates()
 
@@ -152,10 +152,12 @@ blur_coordinates <- function(df, x_lon, y_lat, res_km, seed = NULL) {
 # ARGS:
 #   - res_km: an integer/a float. The size of each pixel of the raster (in km, approximative).
 get_france_raster_template <- function(res_km) {
+    # get mean latitude and longitude resolutions
     lat_mean <- (LAT_MIN + LAT_MAX) / 2
     res_lat <- res_km / 111.0
     res_lon <- res_km / (111.0 * cos(lat_mean * pi / 180))
     
+    # create empty raster with template grid
     template <- rast(
         extent = ext(LON_MIN, LON_MAX, LAT_MIN, LAT_MAX),
         resolution = c(res_lon, res_lat),
@@ -168,20 +170,19 @@ get_france_raster_template <- function(res_km) {
 # ARGS:
 #   - borders: a string. Either "national" (default) or "regional". if "regional", draws highest level inner borders ofthe country.
 get_metropolitan_france_shapefile <- function(borders = "national") {
+    # import from different functions depending on borders
     if (borders == "regional"){
-        france_sf <- ne_states(
-            country = "France", 
-            returnclass = "sf")
+        france_sf <- ne_states(country = "France", returnclass = "sf")
+        
     } else if (borders == "national") {
         france_sf <- ne_countries(
-            country = "France", 
-            scale = "large", 
-            returnclass = "sf")    
+            country = "France", scale = "large", returnclass = "sf")    
+        
     } else {
         stop(paste0(borders, " is not recognised (should be one of 'regional' or 'national')"))
     }
     
-    # Use hard coded extent of france to exclude overseas territories
+    # Use hard coded extent of france to exclude overseas territories from shp
     st_crop(
         france_sf, 
         xmin = -5.5, 
@@ -199,7 +200,7 @@ clip_raster_from_shapefile <- function(raster, shapefile) {
     if (!same.crs(raster, shapefile)) {
         shapefile <- st_transform(shapefile, crs(raster))  # fix silently
     }
-    # Clip the raster using the polygon
+    # Clip the raster using the shapefile
     mask(raster, shapefile, touches = TRUE)
 }
 
@@ -214,12 +215,14 @@ clip_raster_france_wgs84_crs <- function(
         buffer, 
         verbose = TRUE,
         save_to = NULL) {
+    
     # import france shapefile with buffer to avoid clipping important data
     france_sf <- get_metropolitan_france_shapefile()
     france_sf_buffered <- france_sf |>
         st_transform(2154) |>              # EPSG:2154 = RGF93, better conservation of distances
         st_buffer(dist = buffer*1000) |> # buffer distance in meters
         st_transform(crs(raster))   # transform to match raster's crs
+    
     # reduce size of raster
     raster_cropped <- crop(raster, ext(france_sf_buffered))
     raster_clipped <- clip_raster_from_shapefile(
@@ -293,8 +296,9 @@ project_to_hexagons <- function(raster, save_to, res_km, method, verbose = TRUE)
     france_sf_buffered <- france_sf |>
         st_transform(2154) |>              # EPSG:2154 = RGF93, better conservation of distances
         st_buffer(dist = 2*res_km*1000) |> # buffer distance in meters
-        st_transform(crs("EPSG:4326")) # transform to match raster's crs
+        st_transform(crs("EPSG:4326"))     # transform to match raster's crs
 
+    # get mean latitude and longitude resolutions
     lat_mean <- (LAT_MIN + LAT_MAX) / 2
     res_lat <- res_km / 111.0
     res_lon <- res_km / (111.0 * cos(lat_mean * pi / 180))
@@ -370,7 +374,7 @@ interpolate_scattered_points_to_hexagons <- function(
         LAT = "LAT",   
         idp = 2,             
         maxdist_m = Inf) {
-    method <-  "idw"
+    method <- "idw" # other methods exist, but they are not really better
 
     # 1. Build hexagon grid (same as project_to_hexagons)
     invisible(capture.output(dggs <- dgconstruct(
@@ -381,10 +385,12 @@ interpolate_scattered_points_to_hexagons <- function(
         st_buffer(dist = 2*res_km*1000) |>
         st_transform(crs("EPSG:4326"))
 
+    # get mean latitude and longitude resolutions
     lat_mean <- (LAT_MIN + LAT_MAX) / 2
     res_lat <- res_km / 111.0
     res_lon <- res_km / (111.0 * cos(lat_mean * pi / 180))
 
+    # convert shapefile to grid of hexagons
     full_grid <- dgshptogrid(
         dggs, france_sf_buffered, cellsize = min(res_lat, res_lon)/2)
 
@@ -428,10 +434,13 @@ monthly_2_yearly_rasters <- function(
         buffer, 
         verbose = TRUE, 
         fun = mean){
+    
+    # Verify we have 12 paths (for 12 months)
     if (length(raster_paths) != 12){
         stop(paste("List of strings recieved contains", length(raster_paths), "elements, expected 12."))
     }
 
+    # Stack rasters together
     raster_list <- c()
     for (n_path in 1:12){
         # import raster
@@ -442,7 +451,7 @@ monthly_2_yearly_rasters <- function(
                 crs(raster), ". Expected 'EPSG:4326'."))
         }
         
-        cropped_raster <- clip_raster_france_wgs86_crs(
+        cropped_raster <- clip_raster_france_wgs84_crs(
             raster, verbose = verbose, buffer = buffer)     
 
         if (n_path == 1){
@@ -581,4 +590,73 @@ simplify_CLC <- function(
         cli_alert_success("Re-classified CLC2018 is ready!")
     }
     return(clc_raster_collapsed)
+}
+
+# A function that splits STOC dataset into different subsets
+#   - df: a dataframe. Must contain "carre" and "id_point_annee" columns.
+#   - train_size: a numeric. The number of samples for the training samples.
+#   - new_pool_size: a numeric. The number of samples for the new pool of samples.
+#   - k_fold: a numeric. The number of cross-validation subsets to make.
+split_stoc_points_k_fold_subsets <- function(
+    df, train_size, new_pool_size, k_fold) {
+    # To approach independent sampling : 
+    #   - training : each sample is selected in a different square
+    #   - new pool (simulation of 500 ENI) : each sample is selected in a 
+    #       different square
+    #   - test data : remaining samples after selection of training + new pool
+    cli_alert_info("Splitting datasets...")
+
+    if ((train_size + new_pool_size) >= length(unique(df$carre))) {
+        stop(paste0(
+            "Cannot split dataset, inconsistent given sizes of subsets.\n",
+            "train_size + new_pool_size = ", train_size + new_pool_size, 
+            " elements.", "Should be <", length(unique(df$carre)), 
+            " (number of squares in dataset)."))
+    }
+
+    # Storing IDs in list (instead of full dataframes) to save storage
+    k_fold_list <- list()
+    for (k in seq(k_fold)) {
+        # select squares
+        random_order <- sample(
+            unique(df$carre), length(unique(df$carre)), replace = FALSE)
+        train_carre <- random_order[1:train_size]
+        new_pool_carre <- random_order[(train_size+1):(train_size+new_pool_size)]
+
+        # for train sets : select one point per square
+        train_pts <- sample(
+            subset(df, df$carre %in% train_carre)$id_point_annee, 
+            train_size, 
+            replace = FALSE)
+        new_pool_pts <- sample(
+            subset(df, df$carre %in% new_pool_carre)$id_point_annee, 
+            new_pool_size, 
+            replace = FALSE)
+
+        # for validation sets : select remaining points in each square
+        train_square_df <- subset(df, df$carre %in% train_carre)
+        val_train_pts <- subset(
+            train_square_df, 
+            !train_square_df$id_point_annee %in% train_pts)$id_point_annee
+
+        pool_square_df <- subset(df, df$carre %in% new_pool_carre)
+        val_pool_pts <- subset(
+            pool_square_df, 
+            !pool_square_df$id_point_annee %in% new_pool_pts)$id_point_annee
+        
+
+        # for test : select squares not seen before
+        test_never_seen_points <- subset(
+            df, !df$carre %in% c(train_carre, new_pool_carre))$id_point_annee
+
+        # assign values to lists
+        k_fold_list$training_points[[k]] <- train_pts
+        k_fold_list$new_pool_points[[k]] <- new_pool_pts
+        k_fold_list$val_training_points[[k]] <- val_train_pts
+        k_fold_list$val_new_pool_points[[k]] <- val_pool_pts
+        k_fold_list$test_points[[k]] <- test_never_seen_points
+    }
+
+    cli_alert_success("Point ID of splits are ready for each split!\n\n")
+    return(k_fold_list)
 }

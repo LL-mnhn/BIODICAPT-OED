@@ -127,6 +127,7 @@ preprocess_raster <- function(
 
     } else {
         cli_alert_info("Loading raster...")
+        # import and reproject to a standardized grid
         raster <- rast(raster_path)
         . <- project_to_france_custom_grid(
                 raster = raster, 
@@ -155,6 +156,7 @@ preprocess_raster_hexagonal_sf <- function(
 
     } else {
         cli_alert_info("Loading cropped raster...")
+        # import and reproject to a standardized grid of hexagons
         raster <- rast(raster_path)
         . <- project_to_hexagons(
                 raster = raster, 
@@ -177,6 +179,11 @@ before_preprocessing_corine_raster <- function(
         cli_alert_info("Loading raster...")
         raster <- rast(raster_path)
 
+        # CLC contains (too) many categories. Subcategories can be grouped
+        # together to avoid having too many modalities.
+        # We keep all categories at level 1 (i.e. lowest information) ...
+        # ... except crops, for which we get level 2 subcategories 
+        # (level 3 is also available)
         cli_alert_info("Simplifying categories...")
         simplified_clc_raster <- simplify_CLC(
             clc_raster = raster,
@@ -216,12 +223,12 @@ before_preprocessing_chelsa_raster <- function(
 
         # default format is per month, we need yearly data
         cli_alert_info("Aggregating rasters together...")
-
         chelsa_annual_raster <- monthly_2_yearly_rasters(
             raster_paths = chelsa_12_paths, 
             buffer = RES_KM*5, 
             verbose = FALSE,
             fun = mean)
+        
         # data is in kelvin, convert to celsius
         chelsa_annual_raster_celsius <- chelsa_annual_raster - 273.15
         

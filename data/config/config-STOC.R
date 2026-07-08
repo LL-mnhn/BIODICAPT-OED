@@ -15,7 +15,7 @@ PATH_LOCAL_OED <- file.path(RESULTS_PATH, "STOC-OED", "OED")
 
 ### Dataset -------------------------------------------------------------------
 X_VARIABLES <- c("p_milieu", "tmp_spring", "precip_spring") # custom selection
-X_GROUPS <- c(1, 2, 2) # Group above variables in different categories
+X_GROUPS_CATS <- c(1, 2, 2) # Group above variables in different categories
 X_GROUPS_NAMES <- c("niche", "climate") # names associated with X_GROUPS categories
 Y_SPECIES <- c("Sylvia_atricapilla", "Fringilla_coelebs", "Pica_pica", 
     "Periparus_ater", "Carduelis_cannabina") # can be NULL (all species)
@@ -32,10 +32,10 @@ K_FOLD <- 5
 ### HMSC ----------------------------------------------------------------------
 HMSC_XFORMULA <- ~ p_milieu + tmp_spring + precip_spring
 
-SAMPLES <- 5000 # mcmc will stop after saving that much samples
+NSAMPLES <- 5000 # mcmc will stop after saving that much samples
 THIN <- 2 # number of steps between each recording
-TRANSIENT <- 0.5*SAMPLES*THIN # burn-in iterations
-CHAINS <- 3
+NTRANSIENT <- 0.5*NSAMPLES*THIN # burn-in iterations
+NCHAINS <- 3
 
 
 ### Helpers -------------------------------------------------------------------
