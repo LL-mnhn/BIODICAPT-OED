@@ -760,34 +760,16 @@ evaluateModelFitCustom <- function(hM, Y, predY) {
 #   - df: a dataframe with columns "point", "id_point_annee" and names in x_variables
 #   - x_variables: a list of strings. The names of columns to keep in data.
 get_uncertainty_hmsc <- function(hM, df, x_cols) {
-    predicted_lists <- predict_hmsc(
+    predicted_occurrences <- predict_hmsc(
         hM = hM, df = df, x_variables = x_cols)
+    # predicted_lists contains a list of length = number of samples.
+    # for each sample, we get a matrix of n_obs x n_species
+    
+    # Here, we define uncertainty as the average of the standard deviation 
+    # accross observed species:
+    sd_point_sp <- apply(simplify2array(predicted_occurrences), c(1,2), sd)
+    uncertainty_per_point <- as_tibble(sd_point_sp) |> 
+        mutate(average_sd = rowMeans(across(everything())))
+    
+    return(uncertainty_per_point$average_sd)
 }
-# # TODO
-#     cli_alert_info("Making predictions, can take a few minutes...")
-#     full_preds_list <- predict_hmsc(
-#         hM = fitted.hmsc,
-#         df = stoc_df,
-#         x_variables = X_VARIABLES)
-#     cli_alert_info("Predictions are ready.")
-
-#     # Predictions are DISTRIBUTIONS: let's take the average for each point
-#     cli_alert_info("Converting distributions to point average...")
-#     full_preds_avg <- apply(
-#         simplify2array(full_preds_list), c(1,2), mean)
-#     full_preds_sd <- apply(
-#         simplify2array(full_preds_list), c(1,2), sd)
-#     stoc_df_preds <- stoc_df |>
-#         mutate(suitability = full_preds_avg[, sp]) |>
-#         mutate(uncertainty = full_preds_sd[, sp]) |>
-#         mutate(subset = ifelse(
-#             id_point_annee %in% k_fold_points$training_points[[k_fold]], 
-#             "train",
-#             ifelse(
-#                 id_point_annee %in% k_fold_points$val_training_points[[k_fold]], 
-#                 "val", 
-#                 "test")))
-#     # To cite 10.5281/ZENODO.11067678: "The models cannot provide a direct 
-#     # indication of the probability of presence – they instead give an 
-#     # index of habitat suitability, measured on a scale from 0 to 1."
-#     cli_alert_info(paste0("\tSelected species: ", sp))

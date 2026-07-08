@@ -16,7 +16,7 @@ source(here::here("data/config/config-STOC.R")) # Import local parameters
 
 ### Dataset
 set.seed(790231) # for reproducible results
-STRATEGIES <- c("business-as-usual", "gap-filling") # TODO : model-uncertainty
+STRATEGIES <- c("business-as-usual", "gap-filling", "simplified-uncertainty") # TODO : true-model-uncertainty
 R_EFFECT <- "none"
 
 
@@ -39,7 +39,8 @@ k_splits <- readRDS(file.path(PATH_LOCAL_RESULTS, "k_fold_points.rds"))
 
 
 ###### Helper functions ##### -------------------------------------------------
-extended_training_design <- function(strat, base_subset, extension_subset) {
+extended_training_design <- function(
+    strat, base_subset, extension_subset, hM) {
     # dataset changes depending on chosen strat
     if (strat == "business-as-usual") {
         # Business-as-usual: random sampling
@@ -65,6 +66,30 @@ extended_training_design <- function(strat, base_subset, extension_subset) {
                 extended_set,
                 extension_subset[idx_highest_min_distance, ])
         }
+    } else if (strat == "simplified-uncertainty") {
+        # For what I know, this is the method used in doi.org/10.1111/2041-210X.14355
+        # In short: sample where uncertainty is the highest.
+        # In this version, we create one "layer" and pick the most uncertain samples at once
+        cli_alert_warning("Running simplified-uncertainty, this is an Alpha (see coments)...")
+
+        # TODO: We exclude base_subset but ACTUALLY it might be interesting
+        # to resample on already sampled positions to improve performance...
+        uncertainty <- get_uncertainty_hmsc(
+            hM = hM, 
+            df = extension_subset, 
+            x_cols = X_VARIABLES) 
+        idx_most_uncertain <- order(uncertainty, decreasing = TRUE)[1:NEW_SAMPLE_SIZE]
+        extended_set <- bind_rows(
+                base_subset,
+                extension_subset[idx_most_uncertain, ])
+    
+
+    } else if (strat == "true-uncertainty") {
+        # In the previous version, we picked the most uncertain points at once.
+        # This in a good approximation but it lacks precision: by re-training
+        # the model with some new points, the uncertainty of prediction changes
+        # so, we must use optimisation algorithms. 
+
     } else {
         stop(paste0("Unknown strategy: '", strat, "', skipping iteration.\n\n"))
     }
@@ -228,6 +253,12 @@ for (k in seq(K_FOLD)) {
             PATH_LOCAL_OED,
             paste0("model_", STRATEGIES[s], "_random-", R_EFFECT, "_k", k))
         dir.create(path_local_model_results, recursive = TRUE)
+
+        # previous model fitted on this dataset
+        path_previous_model <- file.path(
+            PATH_LOCAL_BASE,
+            paste0("base-model_", R_EFFECT, "-random-effect_k", k),
+            "train_outputs.rds")
         # TODO - 3. Model uncertainty: sample locations that have the model is most uncertain about
 
         cli_alert_warning(paste0(
@@ -235,7 +266,8 @@ for (k in seq(K_FOLD)) {
         extended_training_set <- extended_training_design(
             strat = STRATEGIES[s],
             base_subset = train_subset, 
-            extension_subset = new_pool_subset)
+            extension_subset = new_pool_subset,
+            hM = readRDS(path_previous_model))
         # save names of training points (faster than re-running 
         # `extended_training_design` if investigation of results is needed)
         saveRDS(
