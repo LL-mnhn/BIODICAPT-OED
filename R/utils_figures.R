@@ -853,7 +853,7 @@ explore_dataset <- function(df, x_cols, sp_cols, save_folder, top = 5) {
     suppressMessages(print(draft_plot))
     standardised_ggplot_save(
         figure = draft_plot, 
-        save_path = file.path(save_folder, paste0("draftman_plot.pdf")))
+        save_path = file.path(save_folder, "draftman_plot.pdf"))
     cli_alert_success("Saved Draftman's plot.")
 
     ### FACTORS
@@ -876,7 +876,7 @@ explore_dataset <- function(df, x_cols, sp_cols, save_folder, top = 5) {
 
     ### PREDICTED VARIABLES
     # Make a table with the number of occurences
-    top_sp <- df[sp_cols] |>
+    top_sp <- df[if (!is.null(sp_cols)) sp_cols else NAMES_SPECIES] |>
         summarise(across(where(is.numeric), sum)) |>
         pivot_longer(everything(), names_to = "column", values_to = "sum")
 
@@ -888,6 +888,10 @@ explore_dataset <- function(df, x_cols, sp_cols, save_folder, top = 5) {
     cli_alert_info(paste0(
         "Top-", top," LEAST sighted species (from occurences):"))
     print(as.data.frame(top_sp |> slice_min(sum, n = top)))
+    write_csv(
+            as.data.frame(top_sp), 
+            file.path(save_folder, "occurences_in_full_dataset.csv"))
+    cli_alert_success("Saved table of occurrences in dataset.")
     cat("\n")
 
 }

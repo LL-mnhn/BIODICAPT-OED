@@ -32,7 +32,7 @@ if (authorize_overwrite(PATH_LOCAL_RESULTS)) {
 stoc_df <- check_dataset(STOC_OBS_FULL)
 stoc_df <- stoc_df |>
     mutate(across(all_of(X_FACTORS), as.factor))
-. <- explore_dataset(stoc_df, X_VARIABLES, Y_SPECIES, PATH_LOCAL_RESULTS)
+. <- explore_dataset(stoc_df, X_VARIABLES, NULL, PATH_LOCAL_RESULTS)
 
 # split train/test subsets 'k_fold' times
 k_fold_points <- split_stoc_points_k_fold_subsets(
@@ -139,11 +139,14 @@ for (k in seq(K_FOLD)) {
 cli_alert_info("------------ Results ------------\n\n")
 agg_scores_df <- compute_hmsc_performances(
         parent_folder = PATH_LOCAL_BASE, 
+        filename = "base-model_performances.pdf",
         prefix = "base-model_", 
         model_types = r_effects, 
         sufix = "-random-effect_k", 
         k_fold = K_FOLD, 
-        xlabel = "Model type")
+        xlabel = "Effect of model type on metrics", 
+        ylabel = "Average score per species",
+        group_species = FALSE)
 
 cli_alert_info(
     "Given the results, there is little to no difference in prediction power ",

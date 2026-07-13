@@ -356,18 +356,28 @@ analyses_hmsc <- function(
 # A function to compare training scores between k_folds, subset and model type.
 # ARGS:
 #   - parent_folder: a string. The path where subfolders of each model are located.
+#   - filename: a string. Name of the file for saving resulting plot (should end with .pdf).
 #   - prefix: a string. The prefix of the subfolders names.
 #   - model_types: a list of strings. Middle elements for subfolders names.
 #   - sufix: a string. The sufix of the subfolders names.
 #   - k_fold: a numeric. The number of cross-validation subsets to make. Goes after sufix.
 #   - xlabel: a string. The label for the x-axis of the plot (default is "Model type").
+#   - ylabel: a string. The label for the y-axis of the plot (default is "Model type").
+#   - group_species: whether to take the mean accross all k_folds and species (TRUE, default) or only accross k_folds (FALSE).
+#   - species_names: names of species in CSV (rownames are not available from csvs).
+#   - barplot: whether to make a barplot (TRUE, default) or a pointplot (FALSE).
 compute_hmsc_performances <- function(
         parent_folder, 
+        filename,
         prefix, 
         model_types, 
         sufix, 
         k_fold, 
-        xlabel = "Model type") {
+        xlabel = "Model type", 
+        ylabel = "Average Score",
+        group_species = TRUE,
+        species_names = Y_SPECIES,
+        barplot = TRUE) {
     cli_alert_info("Fetching scores...")
     scores_df <- data.frame()
     for (k in seq(k_fold)) {
@@ -391,16 +401,19 @@ compute_hmsc_performances <- function(
             
             # add columns 
             train_scores <- train_scores |>
+                mutate(species = Y_SPECIES) |>
                 pivot_longer(
                     cols = c(RMSE, AUC, TjurR2), 
                     names_to = "metric", values_to = "score") |>
                 mutate(model_type = model_type, k_fold = k, dataset = "train")
             val_scores <- val_scores |>
+                mutate(species = Y_SPECIES) |>
                 pivot_longer(
                     cols = c(RMSE, AUC, TjurR2), 
                     names_to = "metric", values_to = "score") |>
                 mutate(model_type = model_type, k_fold = k, dataset = "val")  
             test_scores <- test_scores |>
+                mutate(species = Y_SPECIES) |>
                 pivot_longer(
                     cols = c(RMSE, AUC, TjurR2), 
                     names_to = "metric", values_to = "score") |>
@@ -412,32 +425,70 @@ compute_hmsc_performances <- function(
     }
 
     ### Plot scores
-    aggregated_df <- scores_df |>
-        group_by(metric, model_type, dataset) |>
-        summarise(
-            avg_score = mean(score, na.rm = TRUE),
-            sd_score = sd(score, na.rm = TRUE),
-            .groups = "drop_last") |>
-        mutate(dataset = factor(dataset, levels = c("train", "val", "test")))
+    if (group_species) {
+        aggregated_df <- scores_df |>
+            group_by(metric, model_type, dataset) |>
+            summarise(
+                avg_score = mean(score, na.rm = TRUE),
+                sd_score = sd(score, na.rm = TRUE),
+                .groups = "drop_last") |>
+            mutate(dataset = factor(dataset, levels = c("train", "val", "test")))
+    } else {
+        aggregated_df <- scores_df |>
+            group_by(metric, model_type, dataset, species) |>
+            summarise(
+                avg_score = mean(score, na.rm = TRUE),
+                sd_score = sd(score, na.rm = TRUE),
+                .groups = "drop_last") |>
+            mutate(dataset = factor(dataset, levels = c("train", "val", "test")))
+    }
+
 
     cli_alert_info("Creating plot...")
-    p <- ggplot(aggregated_df, aes(y = avg_score, x = model_type, fill = dataset)) +
-        geom_bar(stat = "identity", position = position_dodge(width = 0.66), width=0.66) +
-        geom_errorbar(
-            aes(ymin = avg_score - sd_score, ymax = avg_score + sd_score),
-            position = position_dodge(width = 0.66),
-            width = 0.2
-        ) +
-        labs(caption = "SD and mean computed per k_fold (over all species)") +
-        facet_wrap(~ metric, scales = "free_y")
+
+    if (barplot) {
+        p <- ggplot(
+                aggregated_df, 
+                aes(y = avg_score, x = model_type, fill = dataset, 
+                    ymin = avg_score - sd_score, ymax = avg_score + sd_score)) +
+            geom_bar(stat = "identity", position = position_dodge(width = 0.66), width=0.66) +
+            geom_errorbar(
+                aes(),
+                position = position_dodge(width = 0.66),
+                width = 0.2)
+    } else {
+        p <- ggplot(
+                aggregated_df, 
+                aes(y = avg_score, x = model_type,
+                    ymin = avg_score - sd_score, ymax = avg_score + sd_score)) +
+            geom_ribbon(alpha = 0.33, aes(fill = dataset)) +
+            geom_point(size = 0.33, aes(color = dataset)) +
+            geom_line(aes(color = dataset))
+    }
+
+    p <- p +
+        labs(caption = "SD and mean computed per k_fold (over all species)")
+
+    if (group_species) {
+        p <- p + facet_wrap(~ metric)
+    } else {
+        p <- p + facet_grid(metric ~ species, scales = "free_x")
+    }
 
     p <- my_custom_ggplot_theme(p) + 
-        scale_fill_manual(values = c(PALETTE[2], PALETTE[3], PALETTE[1])) +
-        xlab(xlabel)
+        xlab(xlabel) + 
+        ylab(ylabel)
+
+    
+    p <- p + scale_fill_manual(values = c(PALETTE[2], PALETTE[3], PALETTE[1]))
+    if (!barplot) {
+        p <- p + scale_color_manual(values = c(PALETTE[2], PALETTE[3], PALETTE[1]))
+    }
+    
     print(p)
     standardised_ggplot_save(
         figure = p, 
-        save_path = file.path(parent_folder, "base_average_performances.pdf"))
+        save_path = file.path(parent_folder, filename))
     cli_alert_success("Plot of performances saved!\n\n")
     return(aggregated_df)
 }

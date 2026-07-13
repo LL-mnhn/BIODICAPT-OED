@@ -10,15 +10,16 @@ suppressMessages(suppressWarnings(source(here::here("R/utils_data.R"))))
 ### Paths ---------------------------------------------------------------------
 PATH_LOCAL_RESULTS <- file.path(RESULTS_PATH, "STOC-OED")
 PATH_LOCAL_BASE <- file.path(RESULTS_PATH, "STOC-OED", "base-models")
-PATH_LOCAL_OED <- file.path(RESULTS_PATH, "STOC-OED", "OED")
+PATH_LOCAL_SIZE <- file.path(RESULTS_PATH, "STOC-OED", "sampling-size")
+PATH_LOCAL_STRAT <- file.path(RESULTS_PATH, "STOC-OED", "strategies")
 
 
 ### Dataset -------------------------------------------------------------------
 X_VARIABLES <- c("p_milieu", "tmp_spring", "precip_spring") # custom selection
 X_GROUPS_CATS <- c(1, 2, 2) # Group above variables in different categories
 X_GROUPS_NAMES <- c("niche", "climate") # names associated with X_GROUPS categories
-Y_SPECIES <- c("Sylvia_atricapilla", "Fringilla_coelebs", "Pica_pica", 
-    "Periparus_ater", "Carduelis_cannabina") # can be NULL (all species)
+Y_SPECIES <- c("Sylvia_atricapilla", "Parus_major", "Pica_pica", 
+    "Carduelis_cannabina", "Periparus_ater") # from most to least occurring
 X_FACTORS <- ("p_milieu") # just to be sure of column types
 
 
