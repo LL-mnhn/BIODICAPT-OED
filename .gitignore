@@ -16,13 +16,13 @@ data/preprocessed_data/*
 !data/preprocessed_data/ENI500_*
 !data/preprocessed_data/STOC_*
 !data/preprocessed_data/CLC2018_*
-!data/preprocessed_data/CLC2018_*
 !data/preprocessed_data/MASTER_*
 !data/preprocessed_data/CHELSA_*
 
-# Results - hide large (useless) files
-*_all_traceplots.pdf
-
+# Results - only show 1st k-fold remove others manually
+outputs/results/STOC-OED/base-models/base-model_*-random-effect_k[2-5]
+outputs/results/STOC-OED/base-models/model_train-size-*_random-none_k[2-5]
+outputs/results/STOC-OED/base-models/model_*_random-none_k[2-5]
 
 # Seed - hide to avoid reverse-engineering of raw_data
 data/config/seed.R
