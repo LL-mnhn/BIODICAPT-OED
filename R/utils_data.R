@@ -22,17 +22,30 @@ source(here::here("data/config/config.R")) # all parameters are grouped together
 
 
 ##### Functions #####
+# A function to ask for a inputs by a user, which works in interactive and batch modes
+# ARGS:
+#   - prompt: the message to display before asking for input
+typeline <- function(prompt = "Enter text: ") {
+    if (interactive() ) {
+        txt <- readline(prompt)
+    } else {
+        cat(prompt)
+        txt <- readLines("stdin", n=1)
+    }
+    return(txt)
+}
+
 # A function to ask the user if he wants to overwrite a file.
 # ARGS:
 #   - path: a path (folder or file) to check.
 #   - verbose: a boolean. If TRUE, shows info messages.
-authorize_overwrite <- function(path, verbose = TRUE) {
+authorize_overwrite <- function(path) {
     # if file does not exist, no overwrite needed, return TRUE
     if (!file.exists(path)) {
         return(TRUE)
     } else { 
         # if file exist, ask user for what needs to be done
-        user_input <- readline(prompt = paste0(" Overwrite `", path, 
+        user_input <- typeline(prompt = paste0(" Overwrite `", path, 
             "`? [Y/n]: "))
         cleaned_input <- tolower(trimws(user_input))
 
@@ -46,11 +59,9 @@ authorize_overwrite <- function(path, verbose = TRUE) {
 
         } else {
             # if answer cannot be identified, return FALSE
-            if (verbose) {
-                cli_alert_warning(paste0("Answer was '", user_input,  
-                    "', expected Y(es)/N(o)."))
-                cli_alert_warning("\t↳ Defaults to `FALSE` (no overwrite).")
-            }
+            cli_alert_warning(paste0("Answer was '", user_input,  
+                "', expected Y(es)/N(o)."))
+            cli_alert_warning("\t↳ Defaults to `FALSE` (no overwrite).")
             return(FALSE)
         }
     }

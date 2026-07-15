@@ -10,11 +10,12 @@ library(purrr)
 library(cli)
 library(sf)
 
-source(here::here("R/utils_figures.R"))
+suppressPackageStartupMessages(source(here::here(file.path("R", "utils_figures.R"))))
+
 
 
 ##### Parameters ##### --------------------------------------------------------
-source(here::here("data/config/config.R")) # Import global parameters
+source(here::here(file.path("data","config","config.R"))) # Global parameters
 
 # biodicapt dataset
 BIODICAPT_PATH_PREPROCESSED <- file.path(PROCESSED_DATA_PATH, 

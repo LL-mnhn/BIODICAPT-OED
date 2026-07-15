@@ -1,11 +1,12 @@
-# This scripts checks the presence of files needed in ./data/raw_data
+# This scripts checks the presence of files necessary for scripts 
+# in ./data/raw_data
 
 ##### Libraries ##### ---------------------------------------------------------
 library(cli)
 
 
 ##### Parameters ##### --------------------------------------------------------
-source(here::here("data/config/config.R")) # Import global parameters
+source(here::here(file.path("data", "config", "config.R"))) # Global parameters
 
 
 ##### Helper functions #####
@@ -116,10 +117,16 @@ check_species_data <- function() {
 
 
 ##### Verify each dataset ##### -----------------------------------------------
-cli_alert_warning(paste0(
+cli_alert_danger(paste0(
     "This script can only be run on raw datasets, it should not be run ",
-    "on external machines.\nIf you cloned this repository from GitHub, ",
-    "ignore this script and begin usage with `1-pre_processing.R`."))
+    "on external machines"))
+cli_alert_warning(paste0(
+    "-> If you are running this file with raw datasets ",
+    "available, you can safely ignore this warning."))
+cli_alert_warning(paste0(
+    "-> If you cloned this repository from GitHub, ",
+    "ignore the outputs of this script and begin usage with ",
+    "`1-pre_processing.R`\n\n"))
 
 # 1. BIODICAPT dataset
 . <- check_biodicapt_files()

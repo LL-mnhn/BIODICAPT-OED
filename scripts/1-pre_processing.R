@@ -12,13 +12,17 @@ library(tools)
 library(cli)
 library(sf)
 
-source(here::here("R/utils_data.R"))
-source(here::here("R/utils_figures.R"))
+suppressPackageStartupMessages(source(here::here(file.path("R", "utils_data.R"))))
+suppressPackageStartupMessages(source(here::here(file.path("R", "utils_figures.R"))))
 
 
 ##### Parameters ##### --------------------------------------------------------
-source(here::here("data/config/config.R")) # Import global parameters
-source(here::here("data/config/seed.R")) # hidden seed (for confidentiality)
+source(here::here(file.path("data", "config", "config.R"))) # Global parameters
+if (file.exists(file.path("data", "config", "seed.R"))) {
+    # seed is hidden for confidentiality of data points
+    source(here::here(file.path("data", "config", "seed.R"))) 
+}
+
 
 # biodicapt dataset
 BIODICAPT_PATH_PREPROCESSED <- file.path(PROCESSED_DATA_PATH, 
@@ -285,7 +289,7 @@ preprocess_stoc_dataset <- function() {
 }
 
 show_save_results <- function() {
-    see_datasets <- readline(
+    see_datasets <- typeline(
         prompt = paste0(paste0(
             "Show processed datasets & Save figures ",
             "(overwrites by default)? [Y/n]: ")))

@@ -213,7 +213,7 @@ convergence_hmsc <- function(hM, nchains, thin, save_folder) {
         #     standardised_ggplot_save(
         #         figure = (traceplots[[i_plot]]$trace + traceplots[[i_plot]]$density), 
         #         save_path = file.path(
-        #             PATH_LOCAL_RESULTS, 
+        #             save_folder, 
         #             paste0("Beta_", i_plot, "_traceplot.pdf")))
         # }
         cli_alert_info("Traceplots saved!")
@@ -518,7 +518,6 @@ map_results_hmsc <- function(
             parent_folder,
             paste0(prefix, model_type, sufix, k_fold))
     local_model <- readRDS(file.path(local_folder, "train_outputs.rds")) 
-    local_splits <- readRDS(file.path(PATH_LOCAL_RESULTS, "k_fold_points.rds")) 
 
     cli_alert_info("Making predictions, can take a few minutes...")
     full_preds_list <- predict_hmsc(

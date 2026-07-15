@@ -8,13 +8,13 @@ suppressPackageStartupMessages(library(dplyr))
 suppressPackageStartupMessages(library(readr))
 suppressPackageStartupMessages(library(cli))
 
-suppressMessages(suppressWarnings(source(here::here("R/utils_figures.R"))))
-suppressMessages(suppressWarnings(source(here::here("R/utils_models.R"))))
+suppressPackageStartupMessages(source(here::here(file.path("R", "utils_models.R"))))
+suppressPackageStartupMessages(source(here::here(file.path("R", "utils_figures.R"))))
 
 
 ##### Parameters ##### --------------------------------------------------------
-source(here::here("data/config/config.R")) # Import global parameters
-source(here::here("data/config/config-STOC.R")) # Import local parameters
+source(here::here(file.path("data","config","config.R"))) # Global parameters
+source(here::here(file.path("data","config","config-STOC.R"))) # Local params
 
 ### Dataset
 set.seed(790231) # for reproducible results

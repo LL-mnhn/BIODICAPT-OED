@@ -20,11 +20,11 @@ LAT_MAX <- 51.05
 
 
 ### Global paths --------------------------------------------------------------
-RAW_DATA_PATH <- file.path("data", "raw_data")
-PROCESSED_DATA_PATH <- file.path("data", "preprocessed_data")
-FIGURES_PATH <- file.path("outputs", "figures")
-RESULTS_PATH <- file.path("outputs", "results")
-# SIMULATION_PATH <- file.path("outputs", "simulation")
+WORK_DIR <- file.path(".")
+RAW_DATA_PATH <- file.path(WORK_DIR, "data", "raw_data")
+PROCESSED_DATA_PATH <- file.path(WORK_DIR, "data", "preprocessed_data")
+FIGURES_PATH <- file.path(WORK_DIR, "outputs", "figures")
+RESULTS_PATH <- file.path(WORK_DIR, "outputs", "results")
 
 
 ### File paths ----------------------------------------------------------------
