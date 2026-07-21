@@ -2,6 +2,7 @@
 #   - find optimal model to model STOC data
 #   - find optimal strategy for model training
 ##### Libraries ##### ---------------------------------------------------------
+suppressPackageStartupMessages(library(geosphere))
 suppressPackageStartupMessages(library(dplyr))
 suppressPackageStartupMessages(library(readr))
 suppressPackageStartupMessages(library(cli))
@@ -205,6 +206,7 @@ extended_training_design <- function(
     }
     return(extended_set)
 }
+
 
 fine_compare_hmsc_metric <- function(
         strategies,
