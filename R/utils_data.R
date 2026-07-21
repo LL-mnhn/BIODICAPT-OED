@@ -26,7 +26,11 @@ source(here::here("data/config/config.R")) # all parameters are grouped together
 # ARGS:
 #   - prompt: the message to display before asking for input
 typeline <- function(prompt = "Enter text: ") {
-    if (interactive() ) {
+    if (Sys.info()["user"] == "lehnhofl") {
+        # auto-accept on cluster runs
+        cli_alert_warning("Cluster detected: automatic authorisation.")
+        txt <- "Yes"
+    } else if (interactive() ) {
         txt <- readline(prompt)
     } else {
         cat(prompt)
@@ -50,7 +54,7 @@ authorize_overwrite <- function(path) {
         cleaned_input <- tolower(trimws(user_input))
 
         if (cleaned_input %in% c("y", "yes")) {
-            cli_alert_info("User authorized process to overwrite file.")
+            cli_alert_info("User authorized process to overwrite.")
             return(TRUE)
 
         } else if (cleaned_input %in% c("n", "no")) {

@@ -556,58 +556,93 @@ ggplot_violin_box_plot <- function(
     return(plot)
 }
 
+# A function to summarise the significance of a p-value
+# ARGS
+#   - p: a numeric, the p-value to evaluate.
+sig_stars <- function(p) {
+    if (is.na(p)) return("")
+    if (p < 0.001) "***"
+    else if (p < 0.01) "**"
+    else if (p < 0.05) "*"
+    else if (p < 0.1)  "·"
+    else ""
+}
+
+# A function to choose which correlation to apply to a association of variables
+# when using GGally::ggpairs
+# ARGS: what's expected by GGpairs
+assoc_fun <- function(data, mapping, ...) {
+    x <- eval_data_col(data, mapping$x)
+    y <- eval_data_col(data, mapping$y) 
+
+    if (is.numeric(x) && is.numeric(y)) {
+        # both continuous -> Pearson correlation
+        test <- cor.test(x, y, method = "pearson")
+        r <- test$estimate
+        stars <- sig_stars(test$p.value)
+        lbl <- paste0("Corr:\nr = ", round(r, 2), stars)
+
+    } else if (is.numeric(x) != is.numeric(y)) {
+        # one continuous, one categorical -> correlation ratio (eta)
+        if (is.numeric(x)) { 
+            num_var <- x; cat_var <- factor(y) 
+        } else { 
+            num_var <- y; cat_var <- factor(x) 
+        }
+
+        fit <- aov(num_var ~ cat_var)
+        fit_summary <- summary(fit)[[1]]
+        eta2 <- fit_summary[1, "Sum Sq"] / sum(fit_summary[, "Sum Sq"])
+        p_val <- fit_summary[1, "Pr(>F)"]
+        stars <- sig_stars(p_val)
+        lbl <- paste0("Corr ratio:\nη = ", round(sqrt(eta2), 2), stars)
+
+    } else {
+        # both categorical -> Cramer's V
+        tbl <- table(x, y)
+        chi <- suppressWarnings(chisq.test(tbl))
+        n   <- sum(tbl)
+        V   <- sqrt((chi$statistic / n) / min(nrow(tbl) - 1, ncol(tbl) - 1))
+        stars <- sig_stars(chi$p.value)
+        lbl <- paste0("Cramer:\nV = ", round(V, 2), stars)
+    }
+
+    ggally_text(label = lbl, mapping = aes(), color = "black", ...) +
+    theme_void()
+}
+
+# A function to add a ellipse and loess to plotted points in ggpair diag
+# ARGS: what's expected by GGpairs
+lower_cont_fun <- function(data, mapping, ...) {
+    ggplot(data = data, mapping = mapping) +
+        geom_point(alpha = 0.4, color = "grey20") +
+        stat_ellipse(color = PALETTE[2], type = "norm", level = 0.95, linewidth = 0.6) +
+        geom_smooth(method = "loess", color = PALETTE[1], se = FALSE, linewidth = 0.6, ...)
+}
+
 # A function that create's a draftman's plot.
 # ARGS:
 #   - df: a dataframe.
 #   - columns: a vector. Contains the names of the columns to plot against each other.
-ggplot_custom_draftman <- function(
-    df,
-    columns
-    ) {
-
-    # plots that will appear in the bottom-right triangle of the grid
-    my_lower <- function(data, mapping, ...) {
-        ggplot(data = data, mapping = mapping) +
-            geom_point(color = "black", size = 0.5) +
-            geom_smooth(method = "loess", color = PALETTE[1], se = FALSE, linewidth = 0.75) +
-            stat_ellipse(level = 0.68, color = PALETTE[2], linewidth = 0.75)  # ~1 std dev ≈ 68%
-    }
-
-    # plots that will appear in the top-left triangle of the grid
-    my_upper <- function(data, mapping, ...) {
-        x <- GGally::eval_data_col(data, mapping$x)
-        y <- GGally::eval_data_col(data, mapping$y)
-        
-        test <- cor.test(x, y, method = "spearman", use = "complete.obs")
-        r <- test$estimate
-        p <- test$p.value
-        
-        stars <- case_when(
-            p < 0.001 ~ "***",
-            p < 0.01  ~ "**",
-            p < 0.05  ~ "*",
-            p < 0.1 ~ "·",
-            p > 0.1 ~ ""
-        )
-        
-        ggplot() +
-            annotate("text",
-                    x = 0.5, y = 0.5,
-                    label = paste0(sprintf("%.2f", r), stars),
-                    size = 7,
-                    vjust = "middle", hjust = "center")
-    }
-
-    # custom plot
-    draftman_plot <- ggpairs(
-        df,
+ggplot_custom_draftman <- function(df, columns) {
+    plot <- ggpairs(df,
         columns = columns,
-        lower = list(continuous = my_lower),
-        diag = list(continuous = GGally::wrap("densityDiag", fill = PALETTE[4], color = "black", linewidth = 0.5)),
-        upper = list(continuous = my_upper)
+        upper = list(
+            continuous = assoc_fun, 
+            combo = assoc_fun, 
+            discrete = assoc_fun),
+        lower = list(
+            continuous = lower_cont_fun, 
+            combo = "box_no_facet", 
+            discrete = "count")
     )
 
-    return(my_custom_ggplot_theme(draftman_plot, with_palette = FALSE))
+    plot <- my_custom_ggplot_theme(plot) +
+        theme(
+            axis.text.x = element_blank(),
+            axis.text.y = element_blank(),
+            axis.ticks = element_blank())
+    return(plot)
 }
 
 # A function that creates basic histograms with ggplots
@@ -830,49 +865,53 @@ ggplot_custom_plotVariancePartitioning <- function(hM, VP) {
         theme(axis.text.x  = element_text(angle = 45, hjust = 1)))
 }
 
-# A function that summarises the contents of a dataset with X variables and Y species.
+# A function that summarises the contents of a dataset with X variables and 
+# Y species. Saves a dataframe of occurences and a draftman's plot in PDF.
 #   - df: a data.frame 
 #   - x_cols: a list of strings. The columns containing explanatory variables.
 #   - sp_cols: a list of strings. The columns containing species occurrences.
 #   - save_folder: a string. Path to a folder where "draftman_plot.pdf" will be saved.
 #   - top: a numeric (default is 5). Controls the number of species to show as most and least represented in dataset
 explore_dataset <- function(df, x_cols, sp_cols, save_folder, top = 5) {
-    ### NUMERICS
+    ### PLOT
     cli_alert_info("Exploration of dataset.")
 
-    # for fastest computation of figure: average per square ("carre")
-    draftman_df <- df |>
-        select(c("carre", all_of(x_cols))) |>
-        select(where(is.numeric)) |>
-        group_by(carre) |>
-        summarise_all(mean)
-
-    draft_plot <- ggplot_custom_draftman(
-        draftman_df, 
-        columns = setdiff(names(draftman_df), "carre"))
+    # # for fastest computation of figure: average per square ("carre")
+    # draftman_df <- df |>
+    #     select(c("carre", all_of(x_cols))) |>
+    #     select(where(is.numeric)) |>
+    #     group_by(carre) |>
+    #     summarise_all(mean)
+    # draft_plot <- ggplot_custom_draftman(
+    #     draftman_df, 
+    #     columns = setdiff(names(draftman_df), "carre"))
+    
+    # All points individually (takes longer to run)
+    draft_plot <- ggplot_custom_draftman(df, columns = x_cols)
     suppressMessages(print(draft_plot))
     standardised_ggplot_save(
         figure = draft_plot, 
-        save_path = file.path(save_folder, "draftman_plot.pdf"))
+        save_path = file.path(save_folder, "draftman_plot.pdf"),
+        .width = 36, .height = 12)
     cli_alert_success("Saved Draftman's plot.")
 
-    ### FACTORS
-    factor_df <- df |>
-        select(where(is.factor))
+    # ### FACTORS
+    # factor_df <- df |>
+    #     select(where(is.factor))
 
-    for (col in names(factor_df)) {
-        # for each column, compute frequence and proportion of each variable
-        freq <- table(factor_df[[col]])
-        prop <- round(freq/sum(freq), digits=3)
-        combined_table <- rbind(freq = as.vector(freq), 
-                            prop = as.vector(prop))
+    # for (col in names(factor_df)) {
+    #     # for each column, compute frequence and proportion of each variable
+    #     freq <- table(factor_df[[col]])
+    #     prop <- round(freq/sum(freq), digits=3)
+    #     combined_table <- rbind(freq = as.vector(freq), 
+    #                         prop = as.vector(prop))
 
-        colnames(combined_table) <- names(freq)
+    #     colnames(combined_table) <- names(freq)
 
-        cli_alert_info(paste0("Distribution of '",  col ,"' in dataset:"))
-        print(t(combined_table))
-        cli_alert_info(" ")
-    }
+    #     cli_alert_info(paste0("Distribution of '",  col ,"' in dataset:"))
+    #     print(t(combined_table))
+    #     cli_alert_info(" ")
+    # }
 
     ### PREDICTED VARIABLES
     # Make a table with the number of occurences

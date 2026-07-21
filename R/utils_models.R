@@ -293,6 +293,7 @@ convergence_hmsc <- function(hM, nchains, thin, save_folder) {
             
         }
     }
+    cat("\n")
 }
 
 # A function to display convergence diagnostics for a Hmsc model
@@ -358,7 +359,7 @@ analyses_hmsc <- function(
 #   - parent_folder: a string. The path where subfolders of each model are located.
 #   - filename: a string. Name of the file for saving resulting plot (should end with .pdf).
 #   - prefix: a string. The prefix of the subfolders names.
-#   - model_types: a list of strings. Middle elements for subfolders names.
+#   - loop_elements: a list of strings. Middle elements for subfolders names.
 #   - sufix: a string. The sufix of the subfolders names.
 #   - k_fold: a numeric. The number of cross-validation subsets to make. Goes after sufix.
 #   - xlabel: a string. The label for the x-axis of the plot (default is "Model type").
@@ -370,7 +371,7 @@ compute_hmsc_performances <- function(
         parent_folder, 
         filename,
         prefix, 
-        model_types, 
+        loop_elements, 
         sufix, 
         k_fold, 
         xlabel = "Model type", 
@@ -381,11 +382,11 @@ compute_hmsc_performances <- function(
     cli_alert_info("Fetching scores...")
     scores_df <- data.frame()
     for (k in seq(k_fold)) {
-        for (mt in seq_along(model_types)) { 
+        for (i in seq_along(loop_elements)) { 
             # 0. Setup
-            model_type <- model_types[mt]
+            loop_element <- loop_elements[i]
             path_local_scores <- file.path(
-                parent_folder, paste0(prefix, model_type, sufix, k))
+                parent_folder, paste0(prefix, loop_element, sufix, k))
 
 
             # load train/val/test/scores
@@ -405,19 +406,19 @@ compute_hmsc_performances <- function(
                 pivot_longer(
                     cols = c(RMSE, AUC, TjurR2), 
                     names_to = "metric", values_to = "score") |>
-                mutate(model_type = model_type, k_fold = k, dataset = "train")
+                mutate(loop_element = loop_element, k_fold = k, dataset = "train")
             val_scores <- val_scores |>
                 mutate(species = Y_SPECIES) |>
                 pivot_longer(
                     cols = c(RMSE, AUC, TjurR2), 
                     names_to = "metric", values_to = "score") |>
-                mutate(model_type = model_type, k_fold = k, dataset = "val")  
+                mutate(loop_element = loop_element, k_fold = k, dataset = "val")  
             test_scores <- test_scores |>
                 mutate(species = Y_SPECIES) |>
                 pivot_longer(
                     cols = c(RMSE, AUC, TjurR2), 
                     names_to = "metric", values_to = "score") |>
-                mutate(model_type = model_type, k_fold = k, dataset = "test")  
+                mutate(loop_element = loop_element, k_fold = k, dataset = "test")  
 
             # concatenate
             scores_df <- rbind(train_scores, val_scores, test_scores, scores_df)
@@ -427,7 +428,7 @@ compute_hmsc_performances <- function(
     ### Plot scores
     if (group_species) {
         aggregated_df <- scores_df |>
-            group_by(metric, model_type, dataset) |>
+            group_by(metric, loop_element, dataset) |>
             summarise(
                 avg_score = mean(score, na.rm = TRUE),
                 sd_score = sd(score, na.rm = TRUE),
@@ -435,7 +436,7 @@ compute_hmsc_performances <- function(
             mutate(dataset = factor(dataset, levels = c("train", "val", "test")))
     } else {
         aggregated_df <- scores_df |>
-            group_by(metric, model_type, dataset, species) |>
+            group_by(metric, loop_element, dataset, species) |>
             summarise(
                 avg_score = mean(score, na.rm = TRUE),
                 sd_score = sd(score, na.rm = TRUE),
@@ -449,7 +450,7 @@ compute_hmsc_performances <- function(
     if (barplot) {
         p <- ggplot(
                 aggregated_df, 
-                aes(y = avg_score, x = model_type, fill = dataset, 
+                aes(y = avg_score, x = loop_element, fill = dataset, 
                     ymin = avg_score - sd_score, ymax = avg_score + sd_score)) +
             geom_bar(stat = "identity", position = position_dodge(width = 0.66), width=0.66) +
             geom_errorbar(
@@ -459,7 +460,7 @@ compute_hmsc_performances <- function(
     } else {
         p <- ggplot(
                 aggregated_df, 
-                aes(y = avg_score, x = model_type,
+                aes(y = avg_score, x = loop_element,
                     ymin = avg_score - sd_score, ymax = avg_score + sd_score)) +
             geom_ribbon(alpha = 0.33, aes(fill = dataset)) +
             geom_point(size = 0.33, aes(color = dataset)) +
@@ -499,7 +500,7 @@ compute_hmsc_performances <- function(
 #   - x_cols: a list of strings. The columns containing explanatory variables.
 #   - parent_folder: a string. The path where subfolders of each model are located.
 #   - prefix: a string. The prefix of the subfolder name.
-#   - model_type: a string. Middle element for subfolder name.
+#   - loop_element: a string. Middle element for subfolder name.
 #   - sufix: a string. The sufix of the subfolder name.
 #   - k_fold: a numeric. The number of cross-validation subsets to make. Goes after sufix.
 #   - xlabel: a string. The label for the x-axis of the plot (default is "Model type").
@@ -509,14 +510,14 @@ map_results_hmsc <- function(
         x_cols,
         parent_folder, 
         prefix, 
-        model_type, 
+        loop_element, 
         sufix, 
         k_fold, 
         sp) {
 
     local_folder <- file.path(
             parent_folder,
-            paste0(prefix, model_type, sufix, k_fold))
+            paste0(prefix, loop_element, sufix, k_fold))
     local_model <- readRDS(file.path(local_folder, "train_outputs.rds")) 
 
     cli_alert_info("Making predictions, can take a few minutes...")
