@@ -3,7 +3,6 @@
 .Rhistory
 .RData
 .Ruserdata
-.Rprofile
 .Rbuildignore
 
 # Data - original/large datasets stay local
