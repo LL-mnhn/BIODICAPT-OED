@@ -8,8 +8,10 @@ library(reshape2)
 library(MCMCvis)
 library(ggplot2)
 library(GGally)
+library(readr)
 library(dplyr)
 library(terra)
+library(Hmsc)
 library(coda)
 library(cli)
 library(sf)
@@ -206,7 +208,7 @@ ggplot_categorical_df_on_background_map <- function(
                 shape = SHAPES[1],        
                 fill = PALETTE[1], 
                 color = darken(PALETTE[1], amount = 0.66), 
-                stroke = 0.8
+                stroke = STROKES[1]
             ) +
             labs(
                 x = "longitude",
@@ -299,7 +301,7 @@ ggplot_quantitative_df_on_background_map <- function(
                 shape = SHAPES[1],        
                 fill = PALETTE[1], 
                 color = darken(PALETTE[1], amount = 0.66), 
-                stroke = 0.8
+                stroke = STROKES[1]
             ) +
             labs(
                 x = "longitude",

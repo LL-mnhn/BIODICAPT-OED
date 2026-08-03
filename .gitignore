@@ -21,6 +21,7 @@ data/preprocessed_data/*
 
 # Results - only show 1st k-fold remove others manually
 outputs/results/STOC-OED/model_random-*_strategy-*_training-size-*_k[2-5]
+MeSU_outputs/
 
 # Seed - hide to avoid reverse-engineering of raw_data
 data/config/seed.R

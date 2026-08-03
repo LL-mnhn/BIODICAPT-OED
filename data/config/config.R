@@ -92,18 +92,22 @@ NAMES_SPECIES <- c(
 ### Plot styling --------------------------------------------------------------
 FONT <- "Lexend"
 PALETTE <- c("#D9054E", "#28A349", "#246CBC", 
-             "#5D7B84", "#C2562F", "#FFB703")
-SHAPES <- c(21, 22, 24, 23, 25, 8)
-SIZES <- c(1.66, 1.85, 1.5, 1.66, 1.5, 1.66)
+             "#5D7B84", "#C2562F", "#FFB703",
+             "#7B2CBF", "#333333")
+SHAPES <- c(21, 22, 23, 24, 25, 8, 13, 7)
+SIZES <- c(1.66, 1.85, 1.66, 1.5, 1.5, 1, 1, 1)
+STROKES <- c(0, 0, 0, 0, 0, 0.5, 0.5, 0.5)
 CUSTOM_SCALES <- list(
     scale_color_manual(values = darken(PALETTE, amount = 0.66)),
     scale_fill_manual(values = PALETTE),
     scale_shape_manual(values = SHAPES),
-    scale_size_manual(values = SIZES)
+    scale_size_manual(values = SIZES),
+    scale_discrete_manual(aesthetics = "stroke", values = STROKES)
 )
 LIGHT_CUSTOM_SCALES <- list(
     scale_color_manual(values = PALETTE),
     scale_fill_manual(values = PALETTE),
     scale_shape_manual(values = SHAPES),
-    scale_size_manual(values = SIZES)
+    scale_size_manual(values = SIZES),
+    scale_discrete_manual(aesthetics = "stroke", values = STROKES)
 )

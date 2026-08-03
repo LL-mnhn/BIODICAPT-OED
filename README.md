@@ -4,7 +4,7 @@
 This repository focuses on **Optimal Experimental Designs (OEDs)** for the BIODICAPT project. 
 
 > [!WARNING]
-> **Early Version (V0).** This repository is still under active development and might not run as intented on external machines.
+> This repository is still under active development and might not run as intented on external machines.
 
 ## Context
 ### BIODICAPT
@@ -23,7 +23,7 @@ The transition from the first phase to the second involves a significant shift i
 ├── R                       # Functions
 ├── data/
 │   ├── config              # Configuration files
-│   ├── raw_data            # Original datasets
+│   ├── raw_data            # Original datasets (hidden)
 │   └── preprocessed_data   # Preprocessed datasets
 ├── outputs/
 │   ├── figures             # Visualizations and plots
@@ -38,8 +38,10 @@ The transition from the first phase to the second involves a significant shift i
 - [X] Load STOC dataset
 - [X] Pre-processing
 - [X] Training of HMSC models
-- [ ] Implementation of custom cost function
-- [ ] OED using HMSC on STOC
+- [X] Implementation of custom cost function
+- [X] OED using HMSC on STOC
+- [ ] Does adding samples has an effect ?
+- [ ] Explain results using simulated data ?
 - [ ] Add other models (GJAM, RF, DNN,...)
 - [ ] Results and comparison
 
@@ -54,7 +56,7 @@ git clone https://github.com/LL-mnhn/BIODICAPT-OED.git
 
 2\. Install dependencies
 
-Open `BIODICAPT-OED` as a new session in R (either with [Rstudio](https://docs.posit.co/ide/user/) or [Positron](https://positron.posit.co/welcome.html)). 
+Open `BIODICAPT-OED` as a new session in [Rstudio](https://docs.posit.co/ide/user/) or [Positron](https://positron.posit.co/welcome.html). Use R 4.6.1 (version used during development) 
 
 Install `renv` if not already installed on your machine. Then run:
 ```R
@@ -62,7 +64,7 @@ install.packages("renv")
 renv::restore()
 ```
 
-3\. Environment is ready, local scripts can be run.
+3\. Once your environment is ready, local scripts can be run.
 
 ### Usage Notes
 Important results and figures are already saved in the `outputs` folder.

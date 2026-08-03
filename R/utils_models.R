@@ -200,9 +200,9 @@ convergence_hmsc <- function(hM, nchains, thin, save_folder) {
                 Rhat = TRUE, # ajoute le Rhat
                 n.eff = TRUE, # ajoute la taille d’échantillon effective
                 type = "both"   # explicitly request trace + density
-            )
-        }, error = function(e) {
-            message("Error on iteration ", i, ": ", e$message)
+            )}, 
+        error = function(e) {
+            message("Error in MCMCtrace: ", e$message)
         })
         # # Slower but more beautiful version
         # traceplots <- ggplot_custom_MCMCtrace(
@@ -357,11 +357,11 @@ analyses_hmsc <- function(
 # A function to compare training scores between k_folds, subset and model type.
 # ARGS:
 #   - parent_folder: a string. The path where subfolders of each model are located.
-#   - filename: a string. Name of the file for saving resulting plot (should end with .pdf).
-#   - prefix: a string. The prefix of the subfolders names.
+#   - save_to: a string. Name of the file for saving resulting plot (should end with .pdf). If NULL, does not save pdf.
+#   - loop_prefix: a string. The prefix of the subfolders names.
 #   - loop_elements: a list of strings. Middle elements for subfolders names.
-#   - sufix: a string. The sufix of the subfolders names.
-#   - k_fold: a numeric. The number of cross-validation subsets to make. Goes after sufix.
+#   - loop_suffix: a string. The suffix of the subfolders names.
+#   - k_fold: a numeric. The number of cross-validation subsets to make. Goes after suffix.
 #   - xlabel: a string. The label for the x-axis of the plot (default is "Model type").
 #   - ylabel: a string. The label for the y-axis of the plot (default is "Model type").
 #   - group_species: whether to take the mean accross all k_folds and species (TRUE, default) or only accross k_folds (FALSE).
@@ -369,15 +369,15 @@ analyses_hmsc <- function(
 #   - barplot: whether to make a barplot (TRUE, default) or a pointplot (FALSE).
 compute_hmsc_performances <- function(
         parent_folder, 
-        filename,
-        prefix, 
+        save_to,
+        loop_prefix, 
         loop_elements, 
-        sufix, 
+        loop_suffix, 
         k_fold, 
         xlabel = "Model type", 
         ylabel = "Average Score",
         group_species = TRUE,
-        species_names = Y_SPECIES,
+        species_names = NULL,
         barplot = TRUE) {
     cli_alert_info("Fetching scores...")
     scores_df <- data.frame()
@@ -386,7 +386,7 @@ compute_hmsc_performances <- function(
             # 0. Setup
             loop_element <- loop_elements[i]
             path_local_scores <- file.path(
-                parent_folder, paste0(prefix, loop_element, sufix, k))
+                parent_folder, paste0(loop_prefix, loop_element, loop_suffix, k))
 
 
             # load train/val/test/scores
@@ -402,19 +402,19 @@ compute_hmsc_performances <- function(
             
             # add columns 
             train_scores <- train_scores |>
-                mutate(species = Y_SPECIES) |>
+                mutate(species = species_names) |>
                 pivot_longer(
                     cols = c(RMSE, AUC, TjurR2), 
                     names_to = "metric", values_to = "score") |>
                 mutate(loop_element = loop_element, k_fold = k, dataset = "train")
             val_scores <- val_scores |>
-                mutate(species = Y_SPECIES) |>
+                mutate(species = species_names) |>
                 pivot_longer(
                     cols = c(RMSE, AUC, TjurR2), 
                     names_to = "metric", values_to = "score") |>
                 mutate(loop_element = loop_element, k_fold = k, dataset = "val")  
             test_scores <- test_scores |>
-                mutate(species = Y_SPECIES) |>
+                mutate(species = species_names) |>
                 pivot_longer(
                     cols = c(RMSE, AUC, TjurR2), 
                     names_to = "metric", values_to = "score") |>
@@ -448,6 +448,8 @@ compute_hmsc_performances <- function(
     cli_alert_info("Creating plot...")
 
     if (barplot) {
+        aggregated_df <- aggregated_df |>
+            mutate(loop_element = factor(loop_element, levels = loop_elements))
         p <- ggplot(
                 aggregated_df, 
                 aes(y = avg_score, x = loop_element, fill = dataset, 
@@ -456,7 +458,16 @@ compute_hmsc_performances <- function(
             geom_errorbar(
                 aes(),
                 position = position_dodge(width = 0.66),
-                width = 0.2)
+                width = 0.2) +
+            scale_x_discrete(labels = function(x) {
+                sapply(strsplit(x, "-"), function(words) {
+                    if (length(words) == 1) {
+                        words
+                    } else {
+                        paste0(toupper(substr(words, 1, 1)), collapse = "")
+                    }
+                })
+            })
     } else {
         p <- ggplot(
                 aggregated_df, 
@@ -487,11 +498,193 @@ compute_hmsc_performances <- function(
     }
     
     print(p)
-    standardised_ggplot_save(
-        figure = p, 
-        save_path = file.path(parent_folder, filename))
-    cli_alert_success("Plot of performances saved!\n\n")
+    if (!is.null(save_to)) {
+        standardised_ggplot_save(
+            figure = p, 
+            save_path = file.path(parent_folder, save_to))
+        cli_alert_success("Plot of performances saved!")
+    }
+    cli_alert_success("Plot of performances ready!\n\n")
+
     return(aggregated_df)
+}
+
+# A function to compare training scores between k_folds, subset and model type.
+# ARGS:
+#   - parent_folder: a string. The path where subfolders of each model to compare against the reference are located.
+#   - reference_model_path: a string. The template path to a reference folder of the model (parent_folder goes before, k_fold number goes at the end).
+#   - save_to: a string. Name of the file for saving resulting plot (should end with .pdf). If NULL, does not save pdf.
+#   - loop_prefix: a string. The prefix of the subfolders names.
+#   - loop_elements: a list of strings. Middle elements for subfolders names.
+#   - loop_suffix: a string. The suffix of the subfolders names.
+#   - k_fold: a numeric. The number of cross-validation subsets to make. Goes after suffix and reference_model_path .
+#   - xlabel: a string. The label for the x-axis of the plot (default is "Effect").
+#   - group_species: whether to take the mean accross all k_folds and species (TRUE, default) or only accross k_folds (FALSE).
+fine_compare_hmsc_metric <- function(
+        parent_folder, 
+        reference_model_path, 
+        save_to,
+        loop_prefix, 
+        loop_elements, 
+        loop_suffix, 
+        k_fold, 
+        metric = "MSE",
+        subset_names = c("train", "val", "test"),
+        xlabel = "Effect", 
+        group_species = TRUE) {
+    
+    
+    # load reference results
+    cli_alert_info("Loading base results...")  
+    ref_scores <- list()
+    ref_scores_k_means <- list()
+    for (subset_name in subset_names) {
+        ref_scores[[subset_name]] <- list()
+
+        for (k in seq(k_fold)) {
+            # setup path
+            reference_model_scores_path <- file.path(
+                parent_folder,
+                paste0(reference_model_path, k), 
+                paste0(subset_name, "_scores.csv")
+            )   
+            
+            # load scores
+            if (metric == "MSE") {
+                ref_scores[[subset_name]][[k]] <- read_csv(
+                    reference_model_scores_path,
+                    show_col_types = FALSE)$RMSE^2
+            } else if (metric %in% c("RMSE", "AUC", "TjurR2")) {
+                ref_scores[[subset_name]][[k]] <- read_csv(
+                    reference_model_scores_path,
+                    show_col_types = FALSE)[[metric]]
+            } else {
+                stop(paste0("Metric '", metric, "' is not handled by this function."))
+            }
+
+        }
+
+        # Get mean per k_fold (individual mean for each subset, model_type and species)
+        ref_scores_k_means[[subset_name]] <- colMeans(
+            do.call(rbind, ref_scores[[subset_name]]), na.rm = TRUE)
+    }
+
+    # load new results
+    cli_alert_info("Loading other results...")
+    other_scores <- list()
+    other_scores_k_means <- list()
+    for (subset_name in subset_names) {
+        other_scores[[subset_name]] <- list()
+        other_scores_k_means[[subset_name]] <- list()
+
+        for (i in seq_along(loop_elements)) { 
+            loop_element <- loop_elements[i]
+            other_scores[[subset_name]][[loop_element]] <- list()
+            
+            for (k in seq(k_fold)) {
+                other_model_scores_path <- file.path(
+                    parent_folder, 
+                    paste0(loop_prefix, loop_element, loop_suffix, k),
+                    paste0(subset_name, "_scores.csv")
+                )
+                
+                # load scores
+                if (metric == "MSE") {
+                    other_scores[[subset_name]][[loop_element]][[k]] <- read_csv(
+                        other_model_scores_path,
+                        show_col_types = FALSE)$RMSE^2
+                } else if (metric %in% c("RMSE", "AUC", "TjurR2")) {
+                    other_scores[[subset_name]][[loop_element]][[k]] <- read_csv(
+                        other_model_scores_path,
+                        show_col_types = FALSE)[[metric]]
+                } else {
+                    stop(paste0("Metric '", metric, "' is not handled by this function."))
+                }
+            }
+
+            # Get mean per k_fold (individual mean for each subset, model_type and species)
+            other_scores_k_means[[subset_name]][[loop_element]] <- colMeans(
+                do.call(rbind, other_scores[[subset_name]][[loop_element]]), 
+                na.rm = TRUE)
+        }
+    }
+
+    # format dataframe for ggplot
+    scores_df <- tibble()
+    for (subset_name in subset_names) {
+        for (i in seq_along(loop_elements)) {
+            loop_element <- loop_elements[i]
+
+            if (grepl("MSE", metric)) {
+                score_order = -1 # MSE is better when its low, so reverse order
+            } else {
+                score_order = 1
+            }
+
+            # compute average/sd accross species
+            scores_df <- bind_rows(
+                scores_df,
+                tibble(
+                    average_metric = score_order * mean(
+                        other_scores_k_means[[subset_name]][[loop_element]] - 
+                        ref_scores_k_means[[subset_name]], 
+                        na.rm = TRUE),
+                    sd_metric = sd(
+                        other_scores_k_means[[subset_name]][[loop_element]] - 
+                        ref_scores_k_means[[subset_name]], 
+                        na.rm = TRUE),
+                    subset = subset_name,
+                    loop_element = loop_element))
+        }
+    }
+
+    # add new fields
+    scores_df <- scores_df |>
+        mutate(loop_element = factor(loop_element, levels = loop_elements)) |>
+        mutate(subset = factor(subset, levels = subset_names))
+
+    p <- ggplot(scores_df, 
+        aes(y = average_metric, x = loop_element, color = subset)) +
+        geom_point(
+            stat = "identity", 
+            position = position_dodge(width = 0.66), 
+            size = 3) +
+        geom_errorbar(
+            aes(
+                ymin = average_metric - sd_metric, 
+                ymax = average_metric + sd_metric
+            ),
+            position = position_dodge(width = 0.66),
+            width = 0.2) +
+        labs(
+            caption = "SD and mean computed per k_fold (over all species)",
+            color = "Subset") +
+        ylab(paste("Delta in average", metric)) +
+        xlab(xlabel) +
+        geom_hline(yintercept = 0, linetype = "dashed")
+
+    p <- my_custom_ggplot_theme(p) + 
+        scale_color_manual(values = c(PALETTE[2], PALETTE[3], PALETTE[1])) +
+        scale_x_discrete(labels = function(x) {
+            sapply(strsplit(x, "-"), function(words) {
+                if (length(words) == 1) {
+                    words
+                } else {
+                    paste0(toupper(substr(words, 1, 1)), collapse = "")
+                }
+            })
+        })
+    print(p)
+
+    if (!is.null(save_to)) {
+        standardised_ggplot_save(
+            figure = p, 
+            save_path = file.path(parent_folder, save_to))
+        cli_alert_success("Plot of compared performances saved!")
+    }
+    cli_alert_success("Plot of compared performances ready!\n\n")
+
+    return(scores_df)
 }
 
 # A function to compute a habitat suitability map for a species based on Hmsc predictions.
@@ -499,25 +692,25 @@ compute_hmsc_performances <- function(
 #   - df: a dataframe. Must contain columns listed in x_cols and y_cols.
 #   - x_cols: a list of strings. The columns containing explanatory variables.
 #   - parent_folder: a string. The path where subfolders of each model are located.
-#   - prefix: a string. The prefix of the subfolder name.
+#   - loop_prefix: a string. The prefix of the subfolder name.
 #   - loop_element: a string. Middle element for subfolder name.
-#   - sufix: a string. The sufix of the subfolder name.
-#   - k_fold: a numeric. The number of cross-validation subsets to make. Goes after sufix.
+#   - loop_suffix: a string. The suffix of the subfolder name.
+#   - k_fold: a numeric. The number of cross-validation subsets to make. Goes after suffix.
 #   - xlabel: a string. The label for the x-axis of the plot (default is "Model type").
 #   - sp: a string. The name of a species (in df) to plot.
 map_results_hmsc <- function(
         df,
         x_cols,
         parent_folder, 
-        prefix, 
+        loop_prefix, 
         loop_element, 
-        sufix, 
+        loop_suffix, 
         k_fold, 
         sp) {
 
     local_folder <- file.path(
             parent_folder,
-            paste0(prefix, loop_element, sufix, k_fold))
+            paste0(loop_prefix, loop_element, loop_suffix, k_fold))
     local_model <- readRDS(file.path(local_folder, "train_outputs.rds")) 
 
     cli_alert_info("Making predictions, can take a few minutes...")

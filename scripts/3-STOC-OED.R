@@ -33,7 +33,7 @@ X_GROUPS_NAMES <- X_VARIABLES # names associated with X_GROUPS categories
 MAX_TRAIN_SIZE <- 125 # Number of point used for training
 NEW_POOL_SIZE <- 500 # Number of points from which we can pick for OED
 NEW_SAMPLE_SIZE <- 50 # Number of points we can sample in new pool during OED
-K_FOLDS <- 3
+K_FOLDS <- 5
 
 ### Model
 HMSC_XFORMULA <- ~ (NDVI + light_pollution + p_milieu + altitude + 
@@ -52,9 +52,19 @@ NCHAINS <- 3
 # of parameters
 COMBINATIONS <- list(
     list(
-        TRAIN_SIZES = c(35, 125), # must contain values <= MAX_TRAIN_SIZE
-        R_EFFECTS = c("none"), # c("none", "unit", "spatial")
+        TRAIN_SIZES = c(15, 25, 50, 75, 100, 125), # must contain values <= MAX_TRAIN_SIZE
+        R_EFFECTS = c("none"), # c("none", "units", "spatial")
         STRATEGIES = c("none") # c("none", "business-as-usual", "gap-filling", "simplified-uncertainty")
+    ),
+    list(
+        TRAIN_SIZES = c(125), # must contain values <= MAX_TRAIN_SIZE
+        R_EFFECTS = c("none", "units"), # c("none", "units", "spatial")
+        STRATEGIES = c("none") # c("none", "business-as-usual", "gap-filling", "simplified-uncertainty")
+    ),
+    list(
+        TRAIN_SIZES = c(125), # must contain values <= MAX_TRAIN_SIZE
+        R_EFFECTS = c("none"), # c("none", "units", "spatial")
+        STRATEGIES =  c("business-as-usual", "gap-filling", "simplified-uncertainty") # c("none", "business-as-usual", "gap-filling", "simplified-uncertainty")
     )
 )
 
@@ -102,9 +112,11 @@ prepare_necessities <- function() {
 
     if (!file.exists(PATH_STOC_RESULTS)) {
         cli_alert_info("Specified output folder not found, creating it...")
-        dir.create(PATH_STOC_RESULTS, recursive = FALSE)
+        dir.create(PATH_STOC_RESULTS, recursive = TRUE)
         k_fold_points <- remake_files()
-    } else if (!file.exists(file.path(PATH_STOC_RESULTS, "parameters.rds"))) {
+    } else if (
+        !file.exists(file.path(PATH_STOC_RESULTS, "parameters.rds")) ||
+        !file.exists(file.path(PATH_STOC_RESULTS, "k_fold_points.rds")) ) {
         cli_alert_info("Output folder exists but does not contain base files.")
         k_fold_points <- remake_files()
     } else {
@@ -155,7 +167,7 @@ extended_training_design <- function(
         extended_set <- base_subset
     } else if (strat == "business-as-usual") {
         # Business-as-usual: random sampling
-        cli_alert_info(paste0(s, ".0. Pulling ", NEW_SAMPLE_SIZE, " new random samples..."))
+        cli_alert_info(paste0("Pulling ", NEW_SAMPLE_SIZE, " new random samples..."))
         extended_set <- bind_rows(
             base_subset,
             extension_subset |> slice_sample(n = NEW_SAMPLE_SIZE))
@@ -208,133 +220,6 @@ extended_training_design <- function(
 }
 
 
-fine_compare_hmsc_metric <- function(
-        strategies,
-        subset_names = c("train", "val", "test"),
-        metric = "MSE") {
-    # load old results
-    cli_alert_info("Loading base results...")
-    base_mse <- list()
-    k_fold_base_mse <- list()
-    for (subset_type in subset_names) {
-        base_mse[[subset_type]] <- list()
-
-        for (k in seq(K_FOLD)) {
-            path_base_model_results <- file.path(
-                    PATH_LOCAL_BASE,
-                    paste0("base-model_", R_EFFECT, "-random-effect_k", k))
-            
-            # load local scores
-            if (metric == "MSE") {
-                base_mse[[subset_type]][[k]] <- read_csv(
-                    file.path(path_base_model_results, paste0(subset_type, "_scores.csv")),
-                    show_col_types = FALSE)$RMSE^2
-            } else if (metric %in% c("RMSE", "AUC", "TjurR2")) {
-                base_mse[[subset_type]][[k]] <- read_csv(
-                    file.path(path_base_model_results, paste0(subset_type, "_scores.csv")),
-                    show_col_types = FALSE)[[metric]]
-            } else {
-                stop(paste0("Metric '", metric, "' is not handled by this function."))
-            }
-
-        }
-
-        # Get mean per k_fold (individual mean for each subset, model_type and species)
-        k_fold_base_mse[[subset_type]] <- colMeans(
-            do.call(rbind, base_mse[[subset_type]]), na.rm = TRUE)
-    }
-
-    # load new results
-    cli_alert_info("Loading OED results...")
-    strat_mse <- list()
-    k_fold_strat_mse <- list()
-    for (subset_type in subset_names) {
-        strat_mse[[subset_type]] <- list()
-        k_fold_strat_mse[[subset_type]] <- list()
-
-        for (s in seq_along(strategies)) {
-            strat_mse[[subset_type]][[strategies[s]]] <- list()
-            
-            for (k in seq(K_FOLD)) {
-                path_local_model_results <- file.path(
-                    PATH_LOCAL_STRAT,
-                    paste0("model_", strategies[s], "_random-", R_EFFECT, "_k", k))
-                
-                # load local scores
-                if (metric == "MSE") {
-                    strat_mse[[subset_type]][[strategies[s]]] [[k]] <- read_csv(
-                        file.path(path_local_model_results, paste0(subset_type, "_scores.csv")),
-                        show_col_types = FALSE)$RMSE^2
-                } else if (metric %in% c("RMSE", "AUC", "TjurR2")) {
-                    strat_mse[[subset_type]][[strategies[s]]] [[k]] <- read_csv(
-                        file.path(path_local_model_results, paste0(subset_type, "_scores.csv")),
-                        show_col_types = FALSE)[[metric]]
-                } else {
-                    stop(paste0("Metric '", metric, "' is not handled by this function."))
-                }
-            }
-
-            # Get mean per k_fold (individual mean for each subset, model_type and species)
-            k_fold_strat_mse[[subset_type]][[strategies[s]]] <- colMeans(
-                do.call(rbind, strat_mse[[subset_type]][[strategies[s]]]), na.rm = TRUE)
-        }
-    }
-        
-    # format dataframe for ggplot
-    results_mse <- tibble()
-    for (subset_type in subset_names) {
-        for (s in seq_along(strategies)) {
-            if (grepl("MSE", metric)) {
-                correct_diff = -1 # MSE is better when its low, so reverse order
-            } else {
-                correct_diff = 1
-            }
-
-            # compute average/sd accross species
-            results_mse <- bind_rows(
-                results_mse,
-                tibble(
-                    average_metric = correct_diff * mean(k_fold_strat_mse[[subset_type]][[strategies[s]]] - k_fold_base_mse[[subset_type]], na.rm = TRUE),
-                    sd_metric = sd(k_fold_strat_mse[[subset_type]][[strategies[s]]] - k_fold_base_mse[[subset_type]]),
-                    subset = subset_type,
-                    strategy = strategies[s]))
-        }
-    }
-
-    # add new fields
-    results_mse <- results_mse |>
-        mutate(strategy = factor(strategy, levels = strategies)) |>
-        mutate(subset = factor(subset, levels = c("train", "val", "test")))
-
-    p <- ggplot(results_mse, 
-        aes(y = average_metric, x = strategy, color = subset)) +
-        geom_point(
-            stat = "identity", 
-            position = position_dodge(width = 0.66), 
-            size = 3) +
-        geom_errorbar(
-            aes(ymin = average_metric - sd_metric, ymax = average_metric + sd_metric),
-            position = position_dodge(width = 0.66),
-            width = 0.2) +
-        labs(
-            caption = "SD and mean computed per k_fold (over all species)",
-            color = "Subset") +
-        ylab(paste("Delta in average", metric)) +
-        xlab("Strategy for new samples") +
-        geom_hline(yintercept = 0, linetype = "dashed")
-
-    p <- my_custom_ggplot_theme(p) + 
-        scale_color_manual(values = c(PALETTE[2], PALETTE[3], PALETTE[1]))
-    print(p)
-    standardised_ggplot_save(
-        figure = p, 
-        save_path = file.path(PATH_LOCAL_STRAT, paste0("compared_OED_", metric,".pdf")))
-    cli_alert_success("Plot of compared performances is saved!\n\n")
-    
-    return(results_mse)
-}
-
-
 ##### Main ##### --------------------------------------------------------------
 necessities <- prepare_necessities()
 stoc_df <- necessities[1][[1]]
@@ -342,6 +227,7 @@ k_splits <- necessities[2][[1]]
 total_loops <- sum(apply(sapply(COMBINATIONS, lengths), 2, prod)) * K_FOLDS
 
 cli_alert_info("------------ Fitting models ------------\n\n")
+id_loop <- 0
 for (c in seq_along(COMBINATIONS)) {
     parameters <- COMBINATIONS[[c]]
     
@@ -359,9 +245,13 @@ for (c in seq_along(COMBINATIONS)) {
                     strategy <- parameters$STRATEGIES[s]
 
                     # Display current setup
-                    id_loop <- c * k * m * r * s
-                    cli_alert_warning(paste0("----- Running loop: ", id_loop, "/", 
-                        total_loops, " -----\n"))
+                    id_loop <- id_loop + 1
+                    cli_alert_warning(paste0("----- Running loop: ", id_loop, 
+                        "/", total_loops, " -----\n"))    
+                    cli_alert_info(paste0("- Random effect: ", r_effect, "\n"))
+                    cli_alert_info(paste0("- Strategy: ", strategy, "\n"))
+                    cli_alert_info(paste0("- Train size: ", train_size, "\n"))
+                    cli_alert_info(paste0("- k-fold: ", k, "\n\n"))
 
                     # 0. Setup
                     cli_alert_info(("0. Setting up path..."))
@@ -373,17 +263,36 @@ for (c in seq_along(COMBINATIONS)) {
                             "_k", k
                         )
                     )
+
+                    # pre-check : verify that this combination of variables
+                    # does not already exists (quick optimisation for
+                    # potential dulicates in COMBINATIONS)
+                    if (file.exists(path_local_results)) {
+                        cli_alert_info("Model already fitted! Skipping...\n\n")
+                        next
+                    }
+                    
+                    # else, continue as always
                     dir.create(path_local_results, recursive = FALSE)
+                    path_base_model <- file.path(
+                        PATH_STOC_RESULTS, 
+                        paste0( "model_random-", r_effect,
+                                "_strategy-", "none",
+                                "_training-size-", train_size,
+                                "_k", k),
+                        "chains.rds"
+                    ) # only used when strategy is "simplified-uncertainty"
                     training_set <- extended_training_design(
                         strat = parameters$STRATEGIES[s],
                         base_subset = training_set, 
                         extension_subset = subsets$new_pool,
-                        hM = readRDS(path_previous_model))
+                        hM = readRDS(path_base_model))
 
                     # 1. Fit model
+                    cat("\n")
                     cli_alert_info("1. Fitting model...")
                     base_model <- prepare_hmsc_training(
-                        subset = subsets$train,
+                        subset = training_set,
                         x_cols = X_VARIABLES, 
                         y_cols = if (is.null(Y_SPECIES)) NAMES_SPECIES else Y_SPECIES,
                         formula = HMSC_XFORMULA,
@@ -411,7 +320,7 @@ for (c in seq_along(COMBINATIONS)) {
                     # Explanatory power
                     cli_alert_info("Computing training scores...")
                     train_scores <- evaluate_hmsc_performances(
-                        hM = fitted_model, subset = subsets$train, 
+                        hM = fitted_model, subset = training_set, 
                         x_cols = X_VARIABLES, sp_cols = Y_SPECIES)
                     # Prediction power
                     cli_alert_info("Computing testing scores...")
@@ -456,49 +365,4 @@ for (c in seq_along(COMBINATIONS)) {
             }
         }
     }
-}
-
-
-##### Main ##### --------------------------------------------------------------
-cli_alert_info("------------ Score comparison ------------\n\n")
-for (c in seq_along(COMBINATIONS)) {
-    # if only one vector (or none) in the list contains several elements
-    # then we loop on it to compare performances
-    if (sum(lengths(COMBINATIONS[[c]]) > 1) <= 1) {
-        name <- names(which(lengths(COMBINATIONS[[c]]) > 1))
-
-        if (identical(name, character(0))) {
-
-        } else if (name == "R_EFFECTS") {
-            prefix <- paste0("model_random-")
-            suffix <- paste0("_strategy-", COMBINATIONS[[c]]$STRATEGIES,
-                            "_training-size-", COMBINATIONS[[c]]$TRAIN_SIZES,
-                            "_k")
-        } else if (name == "STRATEGIES") {
-            prefix <- paste0("model_random-", COMBINATIONS[[c]]$R_EFFECTS,
-                            "_strategy-")
-            suffix <- paste0("_training-size-", COMBINATIONS[[c]]$TRAIN_SIZES,
-                            "_k")
-        } else if (name == "TRAIN_SIZES") {
-            prefix <- paste0("model_random-", COMBINATIONS[[c]]$R_EFFECTS,
-                            "_strategy-", COMBINATIONS[[c]]$STRATEGIES,
-                            "_training-size-")
-            suffix <- paste0("_k")
-        } else {
-            stop("Unidentified error in score comparison.")
-        }        
-
-        . <- compute_hmsc_performances(
-            parent_folder = PATH_STOC_RESULTS, 
-            filename = paste0("compared-scores_", tolower(name), ".pdf"),
-            prefix = prefix, 
-            loop_elements = COMBINATIONS[[c]][name][[1]], 
-            sufix = suffix, 
-            k_fold = K_FOLDS, 
-            xlabel = paste0("Effect of ", tolower(name)," type on metrics"), 
-            ylabel = "Average score per species",
-            group_species = FALSE,
-            barplot = ifelse(name == "TRAIN_SIZES", FALSE, TRUE))
-    }
-
 }
