@@ -22,7 +22,7 @@ rm -rf outputs/results
 rm -rf outputs/figures
 
 ## Run scripts
-Rscript scripts/3-STOC-OED.R
+Rscript -e 'source(".Rprofile"); source("scripts/3-STOC-OED.R")'
 
 ## Finish gracefully
 exit 0

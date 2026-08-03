@@ -90,7 +90,7 @@ NAMES_SPECIES <- c(
 
 
 ### Plot styling --------------------------------------------------------------
-FONT <- "Lexend"
+FONT <- ifelse((Sys.info()["user"] == "lehnhofl")[[1]], "sans", "Lexend")
 PALETTE <- c("#D9054E", "#28A349", "#246CBC", 
              "#5D7B84", "#C2562F", "#FFB703",
              "#7B2CBF", "#333333")
