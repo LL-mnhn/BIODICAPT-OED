@@ -24,5 +24,10 @@ rm -rf outputs/figures
 ## Run scripts
 Rscript -e 'source(".Rprofile"); source("scripts/3-STOC-OED.R")'
 
+## Save datetime of run
+cat > outputs/RUN.md <<EOF
+Generated on: $(date '+%Y-%m-%d %H:%M:%S %Z')
+EOF
+
 ## Finish gracefully
 exit 0

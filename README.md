@@ -6,6 +6,9 @@ This repository focuses on **Optimal Experimental Designs (OEDs)** for the BIODI
 > [!WARNING]
 > This repository is still under active development and might not run as intented on external machines.
 
+> [!TIP]
+> Pending the publication of our methodoly and results, you can find our thoughts in the [resources folder](resources).
+
 ## Context
 ### BIODICAPT
 BIODICAPT is a French initiative that aims at monitoring biodiversity of agricultural lands on a large (national) scale through the use of various recording devices.
@@ -14,7 +17,7 @@ The project consists of two phases:
 1. Data collection in a "research" network of agricultural plots 
 2. Data collection in the 500 ENI network (voluntary participation of farmers)
 
-The transition from the first phase to the second involves a significant shift in scale for data collection, which is where OED will be needed (more details [here](resources/README.md)).
+The transition from the first phase to the second involves a significant shift in scale for data collection, which is where OED will be needed. 
 
 ## Description
 ### Structure
