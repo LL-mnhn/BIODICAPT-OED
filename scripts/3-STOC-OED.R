@@ -80,7 +80,7 @@ COMBINATIONS <- list(
         TRAIN_SIZES = c(125), 
         R_EFFECTS = c("none"), 
         NEW_SAMPLE_SIZE = c(50),
-        STRATEGIES =  c("business-as-usual", "gap-filling", "simplified-uncertainty"),
+        STRATEGIES =  c("none", "business-as-usual", "gap-filling", "simplified-uncertainty"),
         HMSC_XFORMULAS = c(
             ~ (NDVI + light_pollution + p_milieu + altitude + precip_spring + tmp_spring)
         )
@@ -89,7 +89,7 @@ COMBINATIONS <- list(
     list(
         TRAIN_SIZES = c(125), 
         R_EFFECTS = c("none"), 
-        NEW_SAMPLE_SIZE = c(10, 25, 50, 100, 150),
+        NEW_SAMPLE_SIZE = c(0, 10, 25, 50, 100, 150),
         STRATEGIES =  c("simplified-uncertainty"),
         HMSC_XFORMULAS = c(
             ~ (NDVI + light_pollution + p_milieu + altitude + precip_spring + tmp_spring)
@@ -182,7 +182,7 @@ prepare_subsets <- function(df, current_k, splits) {
 }
 
 extended_training_design <- function(
-    strat, base_subset, extension_subset, new_sample_size, hM) {
+    strat, base_subset, extension_subset, new_sample_size, variables, hM) {
     # dataset changes depending on chosen strat
     if ((strat == "none") || (new_sample_size == 0)) {
         # No addition of data to base_subet
@@ -196,7 +196,7 @@ extended_training_design <- function(
         
     } else if (strat == "gap-filling") {
         # Gap-filling: selecting points that are the farthest from current design
-        cli_alert_info(paste0(s, ".0. Searching for the most distant points..."))
+        cli_alert_info(paste0("Searching for the most distant points..."))
         extended_set <- base_subset  # no need for cbind() here at all
 
         # Selecting one point at a time (re-computing distances after adding each point)
@@ -222,7 +222,7 @@ extended_training_design <- function(
         uncertainty <- get_uncertainty_hmsc(
             hM = hM, 
             df = extension_subset, 
-            x_cols = X_VARIABLES) 
+            x_cols = variables) 
         idx_most_uncertain <- order(uncertainty, decreasing = TRUE)[1:new_sample_size]
         extended_set <- bind_rows(
                 base_subset,
@@ -324,6 +324,7 @@ for (k in seq(K_FOLDS)) {
             base_subset = training_set, 
             extension_subset = subsets$new_pool,
             new_sample_size = n_new_samples,
+            variables = x_variables,
             hM = readRDS(path_base_model))
 
         # 1. Fit model

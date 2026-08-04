@@ -6,7 +6,7 @@
 #SBATCH --ntasks=1
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=3 # number of chains to run (NOT number of K-folds)
-#SBATCH --time=00-03:00:00
+#SBATCH --time=00-10:00:00
 
 export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK}
 
