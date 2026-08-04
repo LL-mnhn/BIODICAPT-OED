@@ -17,6 +17,25 @@ source(here::here("data/config/config.R")) # Import global parameters
 ##### Functions ##### ---------------------------------------------------------
 # A function to prepare dataset for Hmsc training, outputs a model ready for training
 # ARGS:
+#   - combinations: a list of lists containing elements TRAIN_SIZES, R_EFFECTS, STRATEGIES, HMSC_XFORMULAS, NEW_SAMPLE_SIZE
+build_param_grid <- function(combinations) {
+    # create a grid, each line is a combination of variables
+    # that way, we loop on this table instead of having nested loops
+    grids <- lapply(combinations, function(p) {
+        expand.grid(
+            train_size = p$TRAIN_SIZES,
+            r_effect = p$R_EFFECTS,
+            strategy = p$STRATEGIES,
+            formulas = p$HMSC_XFORMULAS,
+            n_new_samples = p$NEW_SAMPLE_SIZE,
+            stringsAsFactors = FALSE
+        )
+    })
+    dplyr::distinct(dplyr::bind_rows(grids))
+}
+
+# A function to prepare dataset for Hmsc training, outputs a model ready for training
+# ARGS:
 #   - subset: a dataframe. Must contain columns listed in x_cols and y_cols.
 #   - x_cols: a list of strings. The columns containing explanatory variables.
 #   - y_cols: a list of strings. The columns containing species occurrences.
