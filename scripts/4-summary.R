@@ -24,14 +24,14 @@ param_grid <- build_param_grid(COMBINATIONS)
 
 ##### Helper functions ##### --------------------------------------------------
 cli_alert_warning("Reference values are *hard coded* in 'loop_selector'.")
-loop_selector <- function(grid, loop_on) {
+loop_selector <- function(grid, loop_on, base = parameters$BASE_COMBINATIONS) {
     # initialize base values
     combination <- list(
-        train_size = c(125),
-        r_effect = c("none"),
-        strategy = c("none"),
-        formulas = c(~ (NDVI + light_pollution + p_milieu + altitude + precip_spring + tmp_spring)),
-        n_new_samples = c(0)
+        train_size = base$TRAIN_SIZES,
+        r_effect = base$R_EFFECTS,
+        strategy = base$STRATEGIES,
+        formulas = base$HMSC_XFORMULAS,
+        n_new_samples = BASE_COMBINATION$NEW_SAMPLE_SIZE
     )
 
     # replace values for loop_on by list

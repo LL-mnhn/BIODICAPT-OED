@@ -27,7 +27,7 @@ build_param_grid <- function(combinations) {
             r_effect = p$R_EFFECTS,
             strategy = p$STRATEGIES,
             formulas = p$HMSC_XFORMULAS,
-            n_new_samples = p$NEW_SAMPLE_SIZE,
+            n_new_samples = p$NEW_SAMPLE_SIZES,
             stringsAsFactors = FALSE
         )
     })
@@ -1341,7 +1341,6 @@ predict_hmsc <- function(hM, df, x_variables) {
     
     return(full_preds_list)
 }
-
 
 # A function that mimciks Hmsc::evaluateModelFit but can also work on non-training data.
 # ARGS :

@@ -46,12 +46,13 @@ NCHAINS <- 3
 COMBINATIONS <- list(
     # Change the number of training samples
     list(
-        TRAIN_SIZES = c(15, 25, 50, 75, 100, 125), # must contain values <= MAX_TRAIN_SIZE
+        TRAIN_SIZES = c(15, 25, 50, 75, 100, 125), # values <= MAX_TRAIN_SIZE
         R_EFFECTS = c("none"), # c("none", "units", "spatial")
         STRATEGIES = c("none"), # c("none", "business-as-usual", "gap-filling", "simplified-uncertainty")
-        NEW_SAMPLE_SIZE = c(0),
+        NEW_SAMPLE_SIZES = c(0),
         HMSC_XFORMULAS = c(
-            ~ (NDVI + light_pollution + p_milieu + altitude + precip_spring + tmp_spring)
+            ~ (NDVI + light_pollution + p_milieu + altitude + precip_spring + 
+                tmp_spring)
         )
     ),
     # Change the number of explicative variables
@@ -59,9 +60,10 @@ COMBINATIONS <- list(
         TRAIN_SIZES = c(125), 
         R_EFFECTS = c("none"), 
         STRATEGIES = c("none"), 
-        NEW_SAMPLE_SIZE = c(0),
+        NEW_SAMPLE_SIZES = c(0),
         HMSC_XFORMULAS = c(
-            ~ (NDVI + light_pollution + p_milieu + altitude + precip_spring + tmp_spring),
+            ~ (NDVI + light_pollution + p_milieu + altitude + precip_spring + 
+                tmp_spring),
             ~ (p_milieu + light_pollution + altitude),
             ~ (p_milieu + light_pollution))
     ),
@@ -70,33 +72,48 @@ COMBINATIONS <- list(
         TRAIN_SIZES = c(125), 
         R_EFFECTS = c("none", "units"), 
         STRATEGIES = c("none"),
-        NEW_SAMPLE_SIZE = c(0),
+        NEW_SAMPLE_SIZES = c(0),
         HMSC_XFORMULAS = c(
-            ~ (NDVI + light_pollution + p_milieu + altitude + precip_spring + tmp_spring)
+            ~ (NDVI + light_pollution + p_milieu + altitude + precip_spring + 
+                tmp_spring)
         )
     ),
     # Add new samples through different strategies
     list(
         TRAIN_SIZES = c(125), 
         R_EFFECTS = c("none"), 
-        NEW_SAMPLE_SIZE = c(50),
-        STRATEGIES =  c("none", "business-as-usual", "gap-filling", "simplified-uncertainty"),
+        NEW_SAMPLE_SIZES = c(50),
+        STRATEGIES = c("none", "business-as-usual", "gap-filling", 
+            "simplified-uncertainty"),
         HMSC_XFORMULAS = c(
-            ~ (NDVI + light_pollution + p_milieu + altitude + precip_spring + tmp_spring)
+            ~ (NDVI + light_pollution + p_milieu + altitude + precip_spring + 
+                tmp_spring)
         )
     ),
     # Add a different number of new samples
     list(
         TRAIN_SIZES = c(125), 
         R_EFFECTS = c("none"), 
-        NEW_SAMPLE_SIZE = c(0, 10, 25, 50, 100, 150),
+        NEW_SAMPLE_SIZES = c(0, 10, 25, 50, 100, 150),
         STRATEGIES =  c("simplified-uncertainty"),
         HMSC_XFORMULAS = c(
-            ~ (NDVI + light_pollution + p_milieu + altitude + precip_spring + tmp_spring)
+            ~ (NDVI + light_pollution + p_milieu + altitude + precip_spring + 
+                tmp_spring)
         )
     )
 )
 
+BASE_COMBINATION <- list( # must be one of COMBINATIONS
+    # Change the number of training samples
+    TRAIN_SIZES = c(125), 
+    R_EFFECTS = c("none"), 
+    STRATEGIES = c("none"), 
+    NEW_SAMPLE_SIZES = c(0),
+    HMSC_XFORMULAS = c(
+        ~ (NDVI + light_pollution + p_milieu + altitude + precip_spring + 
+            tmp_spring)
+    )
+)
 
 ##### Helper functions ##### --------------------------------------------------
 prepare_necessities <- function() {
@@ -115,7 +132,8 @@ prepare_necessities <- function() {
         THIN = THIN,
         NTRANSIENT = NTRANSIENT,
         NCHAINS = NCHAINS,
-        COMBINATIONS = COMBINATIONS
+        COMBINATIONS = COMBINATIONS,
+        BASE_COMBINATION = BASE_COMBINATION
     )
 
     remake_files <- function() {
@@ -189,17 +207,19 @@ extended_training_design <- function(
         extended_set <- base_subset
     } else if (strat == "business-as-usual") {
         # Business-as-usual: random sampling
-        cli_alert_info(paste0("Pulling ", new_sample_size, " new random samples..."))
+        cli_alert_info(
+            paste0("Pulling ", new_sample_size, " new random samples..."))
         extended_set <- bind_rows(
             base_subset,
             extension_subset |> slice_sample(n = new_sample_size))
         
     } else if (strat == "gap-filling") {
-        # Gap-filling: selecting points that are the farthest from current design
+        # Gap-filling: select points that are the farthest from current design
         cli_alert_info(paste0("Searching for the most distant points..."))
         extended_set <- base_subset  # no need for cbind() here at all
 
-        # Selecting one point at a time (re-computing distances after adding each point)
+        # Select one point at a time 
+        # (re-compute distances each time a point is added)
         for (i in 1:new_sample_size) {
             dist_matrix <- distm(
                 extended_set[, c("LON", "LAT")],
@@ -212,10 +232,10 @@ extended_training_design <- function(
                 extension_subset[idx_highest_min_distance, ])
         }
     } else if (strat == "simplified-uncertainty") {
-        # For what I know, this is the method used in doi.org/10.1111/2041-210X.14355
+        # This is the method used in doi.org/10.1111/2041-210X.14355
         # In short: sample where uncertainty is the highest.
-        # In this version, we create one "layer" and pick the most uncertain samples at once
-        cli_alert_warning("Running simplified-uncertainty, this is an Alpha (see coments)...")
+        # Here, we create a "layer" and pick the most uncertain samples at once
+        cli_alert_warning("Running simplified-uncertainty...")
 
         # TODO: We exclude base_subset but ACTUALLY it might be interesting
         # to resample on already sampled positions to improve performance...
@@ -223,7 +243,8 @@ extended_training_design <- function(
             hM = hM, 
             df = extension_subset, 
             x_cols = variables) 
-        idx_most_uncertain <- order(uncertainty, decreasing = TRUE)[1:new_sample_size]
+        idx_most_uncertain <- order(
+            uncertainty, decreasing = TRUE)[1:new_sample_size]
         extended_set <- bind_rows(
                 base_subset,
                 extension_subset[idx_most_uncertain, ])
@@ -234,9 +255,10 @@ extended_training_design <- function(
         # This in a good approximation but it lacks precision: by re-training
         # the model with some new points, the uncertainty of prediction changes
         # so, we must use optimisation algorithms. 
+        stop("'true-uncertainty' method is not available yet.")
 
     } else {
-        stop(paste0("Unknown strategy: '", strat, "', skipping iteration.\n\n"))
+        stop(paste0("Unknown strategy: '", strat, "'."))
     }
     return(extended_set)
 }
@@ -306,17 +328,21 @@ for (k in seq(K_FOLDS)) {
         dir.create(path_local_results, recursive = FALSE)
         # only used when strategy is "simplified-uncertainty"
         path_base_model <- file.path(
-            PATH_STOC_RESULTS, paste0(
-                "model_random-", "none",
-                "_strategy-", strategy,
-                "_new-samples-", n_new_samples,
-                "_training-size-", train_size,
-                "_n-variables-", length(x_variables),
-                "_k", k
-            )
+            PATH_STOC_RESULTS, 
+            paste0(
+                "model_random-", BASE_COMBINATION$R_EFFECTS,
+                "_strategy-", BASE_COMBINATION$STRATEGIES,
+                "_new-samples-", BASE_COMBINATION$NEW_SAMPLE_SIZES,
+                "_training-size-", BASE_COMBINATION$TRAIN_SIZES,
+                "_n-variables-", 
+                length(all.vars(BASE_COMBINATION$HMSC_XFORMULAS[[1]])),
+                "_k", k),
+            "chains.rds"
         )
         if (!file.exists(path_base_model)) {
-            stop(paste0(path_base_model, ", path not found. Did you call a similar model with strategy='none' first?"))
+            stop(paste0(
+                path_base_model, ", path not found.",
+                " Did you call a similar model with strategy='none' first?"))
         }
 
         training_set <- extended_training_design(
@@ -392,7 +418,7 @@ for (k in seq(K_FOLDS)) {
         cli_alert_success("Scores saved!\n\n")
 
         # 4. Result analysis
-        cli_alert_info(".4. Associations...")
+        cli_alert_info("4. Associations...")
         . <- analyses_hmsc(
             hM = fitted_model, 
             save_folder = path_local_results, 
