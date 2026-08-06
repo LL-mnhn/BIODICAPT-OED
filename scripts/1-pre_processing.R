@@ -23,6 +23,8 @@ if (file.exists(file.path("data", "config", "seed.R"))) {
     source(here::here(file.path("data", "config", "seed.R"))) 
 }
 
+PATH_DATA_FIGURES <- file.path(FIGURES_PATH, "data")
+dir.create(PATH_DATA_FIGURES, recursive = TRUE)
 
 # biodicapt dataset
 BIODICAPT_PATH_PREPROCESSED <- file.path(PROCESSED_DATA_PATH, 
@@ -299,7 +301,7 @@ show_save_results <- function() {
         cli_alert_info("Showing plots to the user.")
         cli_alert_warning(paste0(
             "All figures automatically are saved as .pdf inside '", 
-            FIGURES_PATH, "' ."))
+            PATH_DATA_FIGURES, "' ."))
 
         
         # 1. biodicapt dataset
@@ -315,7 +317,7 @@ show_save_results <- function() {
         print(biodicapt_plot)
         standardised_ggplot_save(
             figure = biodicapt_plot, 
-            save_path = file.path(FIGURES_PATH, "biodicapt_networks.pdf"))
+            save_path = file.path(PATH_DATA_FIGURES, "biodicapt_networks.pdf"))
 
         # 2. 500 eni dataset
         eni500_df <- read_csv(
@@ -329,7 +331,7 @@ show_save_results <- function() {
         print(eni500_plot)
         standardised_ggplot_save(
             figure = eni500_plot, 
-            save_path = file.path(FIGURES_PATH, "500ENI_sites.pdf"))
+            save_path = file.path(PATH_DATA_FIGURES, "500ENI_sites.pdf"))
 
         # # 3. Corine Land Cover Dataset
         # # raster
@@ -344,7 +346,7 @@ show_save_results <- function() {
         # print(corine_plot)
         # standardised_ggplot_save(
         #     figure = corine_plot, 
-        #     save_path = file.path(FIGURES_PATH, "corine_raster.pdf"))
+        #     save_path = file.path(PATH_DATA_FIGURES, "corine_raster.pdf"))
         # # shapefile  
         corine_shapefile <- st_read(
             paste0(CORINE_BASENAME, 
@@ -362,7 +364,7 @@ show_save_results <- function() {
         print(corine_plot_bis)
         standardised_ggplot_save(
             figure = corine_plot_bis, 
-            save_path = file.path(FIGURES_PATH, "corine_hexagons.pdf"))    
+            save_path = file.path(PATH_DATA_FIGURES, "corine_hexagons.pdf"))    
         
         
         # 4. chelsa datasets
@@ -383,7 +385,7 @@ show_save_results <- function() {
             # standardised_ggplot_save(
             #     figure = chelsa_tas_plot, 
             #     save_path = file.path(
-            #         FIGURES_PATH, 
+            #         PATH_DATA_FIGURES, 
             #         paste0("chelsa_", CHELSA_DATASETS[i], "_raster.pdf")))
             # # shapefile  
             chelsa_shapefile <- st_read(
@@ -400,7 +402,7 @@ show_save_results <- function() {
             print(chelsa_plot_bis)
             standardised_ggplot_save(
                 figure = chelsa_plot_bis, 
-                save_path = file.path(FIGURES_PATH, 
+                save_path = file.path(PATH_DATA_FIGURES, 
                     paste0("chelsa_", CHELSA_DATASETS[i], "_hexagons.pdf")))    
         }
         
@@ -430,7 +432,7 @@ show_save_results <- function() {
         standardised_ggplot_save(
             figure = stoc_plot, 
             save_path = file.path(
-                FIGURES_PATH, 
+                PATH_DATA_FIGURES, 
                 paste0("stoc_sightings_", sp_to_show,".pdf")))
 
             

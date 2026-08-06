@@ -20,6 +20,7 @@ set.seed(496) # for reproducible results
 
 ### Paths
 PATH_STOC_RESULTS <- file.path(RESULTS_PATH, "STOC-OED")
+PATH_STOC_FIGURES <- file.path(FIGURES_PATH, "STOC-OED")
 
 ### Variables
 X_AVAILABLES <- c(
@@ -107,8 +108,8 @@ BASE_COMBINATION <- list( # must be one of COMBINATIONS
     # Change the number of training samples
     TRAIN_SIZES = c(125), 
     R_EFFECTS = c("none"), 
-    STRATEGIES = c("none"), 
-    NEW_SAMPLE_SIZES = c(0),
+    STRATEGIES = c("none", "simplified-uncertainty"), # "none" is base, "simplified-uncertainty" is when looping on NEW_SAMPLE_SIZES
+    NEW_SAMPLE_SIZES = c(0, 50), # 0 is base, 50 is when looping on STRATEGIES
     HMSC_XFORMULAS = c(
         ~ (NDVI + light_pollution + p_milieu + altitude + precip_spring + 
             tmp_spring)
@@ -140,7 +141,7 @@ prepare_necessities <- function() {
         cli_alert_info("Creating base files...")
         # save parameters and dataset plots
         saveRDS(current_params, file.path(PATH_STOC_RESULTS, "parameters.rds"))
-        . <- explore_dataset(df, X_AVAILABLES, NULL, PATH_STOC_RESULTS)
+        . <- explore_dataset(df, X_AVAILABLES, NULL, PATH_STOC_FIGURES)
 
         # save data splits for reproducability
         k_fold_points <- split_stoc_points_k_fold_subsets(
@@ -153,6 +154,7 @@ prepare_necessities <- function() {
     if (!file.exists(PATH_STOC_RESULTS)) {
         cli_alert_info("Specified output folder not found, creating it...")
         dir.create(PATH_STOC_RESULTS, recursive = TRUE)
+        dir.create(PATH_STOC_FIGURES, recursive = TRUE)
         k_fold_points <- remake_files()
     } else if (
         !file.exists(file.path(PATH_STOC_RESULTS, "parameters.rds")) ||
@@ -292,6 +294,11 @@ for (k in seq(K_FOLDS)) {
         x_variables <- all.vars(formula)
         x_groups_cats <- seq(1:length(x_variables)) # For variance proportion       
 
+        # if strategy is none, overwrite n_new_samples to avoid errors
+        if (strategy == "none") {
+            n_new_samples <- 0
+        }
+
         # Display current setup
         id_loop <- id_loop + 1
         cli_alert_warning(paste0("----- Running loop: ", id_loop, 
@@ -339,7 +346,7 @@ for (k in seq(K_FOLDS)) {
                 "_k", k),
             "chains.rds"
         )
-        if (!file.exists(path_base_model)) {
+        if ((!file.exists(path_base_model)) && (strategy != "none")) {
             stop(paste0(
                 path_base_model, ", path not found.",
                 " Did you call a similar model with strategy='none' first?"))

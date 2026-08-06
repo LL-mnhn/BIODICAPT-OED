@@ -5,8 +5,10 @@
 suppressPackageStartupMessages(library(dplyr))
 suppressPackageStartupMessages(library(cli))
 
-suppressPackageStartupMessages(source(here::here(file.path("R", "utils_figures.R"))))
-suppressPackageStartupMessages(source(here::here(file.path("R", "utils_models.R"))))
+suppressPackageStartupMessages(source(here::here(file.path(
+    "R", "utils_figures.R"))))
+suppressPackageStartupMessages(source(here::here(file.path(
+    "R", "utils_models.R"))))
 
 
 ##### Parameters ##### --------------------------------------------------------
@@ -23,25 +25,36 @@ param_grid <- build_param_grid(COMBINATIONS)
 
 
 ##### Helper functions ##### --------------------------------------------------
-cli_alert_warning("Reference values are *hard coded* in 'loop_selector'.")
-loop_selector <- function(grid, loop_on, base = parameters$BASE_COMBINATIONS) {
+cli_alert_warning("[WARNING]: Reference values are *hard coded* in 'loop_selector'.")
+loop_selector <- function(grid, loop_on, base = parameters$BASE_COMBINATION){
     # initialize base values
     combination <- list(
         train_size = base$TRAIN_SIZES,
         r_effect = base$R_EFFECTS,
-        strategy = base$STRATEGIES,
+        strategy = base$STRATEGIES[1],
         formulas = base$HMSC_XFORMULAS,
-        n_new_samples = BASE_COMBINATION$NEW_SAMPLE_SIZE
+        n_new_samples = base$NEW_SAMPLE_SIZE[1]
     )
-
-    # replace values for loop_on by list
-    combination[[loop_on]] <- unique(param_grid[[loop_on]])
 
     # replace formulas by number of variables
     combination$formulas <- lapply(
             lapply(combination$formulas, all.vars), 
         length)
+    
+    # if looping on strategies, change base new_sample_size
+    if (loop_on == "strategy") {
+        combination$n_new_samples <- base$NEW_SAMPLE_SIZE[2]
+    }
 
+    # if looping on new_samples, change base strategy
+    if (loop_on == "n_new_samples") {
+        combination$strategy <- base$STRATEGIES[2]
+    }
+
+    # replace single value by list to loop on
+    combination[[loop_on]] <- unique(param_grid[[loop_on]])
+
+    # a preffix, and a suffix in two parts
     path_sections <- list("", "")
     path_idx <- 1
     parameter_names <- c(
@@ -49,6 +62,7 @@ loop_selector <- function(grid, loop_on, base = parameters$BASE_COMBINATIONS) {
     path_names <- c(
         "model_random-", "_strategy-", "_new-samples-", "_training-size-", "_n-variables-")
 
+    # when reaching vector of item in list, switch to next path section
     for (p in seq_along(parameter_names)) {
         if (length(combination[[parameter_names[p]]]) > 1) {
             path_sections[[path_idx]] <- paste0(
@@ -63,7 +77,7 @@ loop_selector <- function(grid, loop_on, base = parameters$BASE_COMBINATIONS) {
             )
         }
     }
-    path_sections[[2]] <- paste(path_sections[[2]], "_k")
+    path_sections[[2]] <- paste0(path_sections[[2]], "_k")
 
     return(path_sections)
 }
@@ -75,51 +89,70 @@ for (column in names(param_grid)) {
     filename_sections <- loop_selector(param_grid, column)
     loop_list <- unique(param_grid[[column]])
 
+    # using names would be too long, we use number of x variables in formula
     if (column == "formulas") {
-        loop_list <- lapply(lapply(loop_list, all.vars), length)
+        loop_list <- sapply(lapply(loop_list, all.vars), length)
     }
 
-    . <- barplot_raw_scores(
-        parent_folder = file.path(RESULTS_PATH, SUBFOLDER), 
-        save_to = paste0("barplot_", tolower(name), "_scores.pdf"),
-        loop_prefix = filename_sections[[1]], 
-        loop_elements = loop_list, 
-        loop_suffix = filename_sections[[2]], 
-        k_fold = parameters$K_FOLDS, 
-        xlabel = paste0("Effect of ", tolower(name)," type on metrics"), 
-        ylabel = "Average score per species",
-        group_species = FALSE,
-        species_names = parameters$Y_SPECIES,
-        barplot = ifelse(name == "TRAIN_SIZES", FALSE, TRUE))
+    # if list is numerical, sort it
+    if (any(sapply(loop_list, is.numeric))) {
+        loop_list <- sort(loop_list)
+    }
 
-    . <- dotwhisker_compare_scores(
-        parent_folder = file.path(RESULTS_PATH, SUBFOLDER), 
-        reference_model_path = paste0(prefix, loop_list[1], suffix), 
-        save_to = paste0("dotwhisker_", tolower(name), "_comparison.pdf"),
-        loop_prefix = filename_sections[[1]], 
-        loop_elements = loop_list[-1], 
-        loop_suffix = filename_sections[[2]], 
-        k_fold = parameters$K_FOLDS, 
-        metric = "MSE",
-        bars = "CI",
-        subset_names = c("train", "val", "test"),
-        xlabel = paste0(
-            "Effect of ", tolower(name)," compared to '", loop_list[1], "'"), 
-        group_species = TRUE,
-        species_names = parameters$Y_SPECIES)
+    for (bool in c(FALSE, TRUE)) {
+        if (bool == FALSE) {
+            add_name <- "_per_species"
+        } else {
+            add_name <- ""
+        }
 
-    . <- boxplot_compare_scores(
-        parent_folder = file.path(RESULTS_PATH, SUBFOLDER), 
-        reference_model_path = paste0(prefix, loop_list[1], suffix), 
-        save_to = paste0("boxplot_", tolower(name), "_comparison.pdf"),
-        loop_prefix = filename_sections[[1]], 
-        loop_elements = loop_list[-1], 
-        loop_suffix = filename_sections[[2]], 
-        k_fold = parameters$K_FOLDS, 
-        metric = "MSE",
-        subset_names = c("train", "val", "test"),
-        xlabel = paste0(
-            "Effect of ", tolower(name)," compared to '", loop_list[1], "'"), 
-        group_species = TRUE,
-        species_names = parameters$Y_SPECIES)
+        . <- barplot_raw_scores(
+            parent_folder = file.path(RESULTS_PATH, SUBFOLDER), 
+            save_to = file.path(
+                FIGURES_PATH, SUBFOLDER,
+                paste0("barplot_", tolower(column), add_name, "_scores.pdf")),
+            loop_prefix = filename_sections[[1]], 
+            loop_elements = if (column != "strategy") {loop_list} else {loop_list[-1]}, 
+            loop_suffix = filename_sections[[2]], 
+            k_fold = parameters$K_FOLDS, 
+            xlabel = paste0("Effect of ", tolower(column)," type on metrics"), 
+            ylabel = "Average score per species",
+            group_species = bool,
+            species_names = parameters$Y_SPECIES,
+            barplot = ifelse(any(sapply(loop_list, is.numeric)), FALSE, TRUE))
+
+        . <- boxplot_compare_scores(
+            parent_folder = file.path(RESULTS_PATH, SUBFOLDER), 
+            reference_model_path = paste0(
+                filename_sections[[1]], loop_list[1], filename_sections[[2]]), 
+            save_to = file.path(
+                FIGURES_PATH, SUBFOLDER,
+                paste0("boxplot_", tolower(column), add_name, "_comparison.pdf")),
+            loop_prefix = filename_sections[[1]], 
+            loop_elements = loop_list[-1], 
+            loop_suffix = filename_sections[[2]], 
+            k_fold = parameters$K_FOLDS, 
+            metric = "MSE",
+            subset_names = c("train", "val", "test"),
+            xlabel = paste0(
+                "Effect of ", tolower(column)," compared to '", loop_list[1], "'"), 
+            group_species = bool,
+            species_names = parameters$Y_SPECIES)
+
+        . <- dotwhisker_model_scores(
+            parent_folder = file.path(RESULTS_PATH, SUBFOLDER), 
+            save_to = file.path(
+                FIGURES_PATH, SUBFOLDER,
+                paste0("dotwhisker_", tolower(column), add_name, "_scores.pdf")),
+            loop_prefix = filename_sections[[1]], 
+            loop_elements = loop_list, 
+            loop_suffix = filename_sections[[2]], 
+            k_fold = parameters$K_FOLDS, 
+            metric = "MSE",
+            xlabel = "Difference in RMSE", 
+            ylabel = paste0(
+                "Effect of ", tolower(column)," compared to '", loop_list[1], "'"),
+            group_species = bool,
+            species_names = parameters$Y_SPECIES)
+    }
 }

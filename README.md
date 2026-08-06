@@ -22,8 +22,9 @@ The transition from the first phase to the second involves a significant shift i
 ## Description
 ### Structure
 ```
-├── scripts                 # Core scripts to run
-├── R                       # Functions
+├── report/*                # A report summarising results
+├── scripts/                # Core scripts to run
+├── R/                      # Functions
 ├── data/
 │   ├── config              # Configuration files
 │   ├── raw_data            # Original datasets (hidden)
@@ -31,7 +32,7 @@ The transition from the first phase to the second involves a significant shift i
 ├── outputs/
 │   ├── figures             # Visualizations and plots
 │   └── results             # Statistical outputs and reports
-├── renv                    # Information about R environment (packages)
+├── renv/                   # Information about R environment (packages)
 ├── DESCRIPTION             # Standard DESCRIPTION file for R packages
 └── README.md               # This file
 ```
@@ -43,6 +44,7 @@ The transition from the first phase to the second involves a significant shift i
 - [X] Training of HMSC models
 - [X] Implementation of custom cost function
 - [X] OED using HMSC on STOC
+- [ ] Add an automatic report
 - [ ] Does adding samples has an effect ?
 - [ ] Explain results using simulated data ?
 - [ ] Add other models (GJAM, RF, DNN,...)
