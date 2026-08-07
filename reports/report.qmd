@@ -1,0 +1,534 @@
+---
+title: "BIODICAPT: Optimal Experimental Design"
+title-block-banner: true
+
+date: last-modified
+date-format: iso
+
+page-layout: article
+
+toc: true
+toc-location: right
+toc-depth: 6
+number-sections: false
+
+bibliography: references.bib
+csl: vancouver.csl
+
+theme:
+  light: brite-mnhn.scss
+
+author:
+  - name: Loïc Lehnhoff
+    orcid: 0000-0002-2100-6626
+    email: loic.lehnhoff@mnhn.fr
+    affiliation: UMR CESCO
+---
+
+# Introduction
+## OED
+**Optimal Experimental Design** (or OED for short[^1]) is a method for designing experiments that aims at maximising information gain while minimising a cost function. This cost function can encompass uncertainty, cost, time... it is up 
+to the user to select the parameters to optimise.
+
+[The key concept is that **not all observations are equally informative**.]{.mark} 
+
+This concept can be particularly interesting when working in participartory science, which is our case for the BIODICAPT project.
+
+[^1]: Sometimes, this concept is also referred to as "adaptive sampling".
+
+## BIODICAPT
+
+BIODICAPT is a French initiative that aims at monitoring biodiversity of agricultural lands on a large (*aka national*) scale through the use of various recording devices.
+
+**The project consists of two phases:**
+
+1. Data collection within a "research" network of agricultural plots.
+2. Data collection within the 500 ENI network.
+
+500 ENI is a network of farmers that can be recruited to work on BIODICAPT. However, their participation is *voluntary*, which raises some challenges. Therefore, the transition from the first phase to the second involves a significant shift in scale and philosophy for data collection, which is why OED will be needed. 
+
+## Strategy
+During the first phase of the project, data will be collected on ~125 agricultural plots. With our budget and logistical constraints, we aim at sampling 50 to 150 new plots within 500 ENI.
+
+With OED, the question we want to answer is simple: **which points are most informative in the 500ENI network, given our previous data collection and our constraints?**
+
+For that, we'll use explicative variables collected on site (temperatures, precipitation, type of land, ...), response variables obtained from recorders (presence-absence of birds species mainly), and Species Distribution Models (SDM), in particular HMSC, which is a joint-SDM (JSDM) [@ovaskainen_how_2017]. These models make use of several species distributions to find *latent* links between them, which supposedly improves the prediction accuracy.
+
+They are opposed to single SDMs (Species Distribution Models applied to one species) and SSDMs (Stacked SDMs, are mutliple SMDs glued together, with no link between them).
+
+### HMSC
+HMSC (Hierarchical Modelling of Species Communities) is a JSDM developped by Ovaskainen et al. (2017) [@ovaskainen_how_2017], it is distributed as an open-source R-package on [GitHub](https://github.com/hmsc-r/HMSC/) [@tikhonov_joint_2020]. 
+
+It is undoubtebly the most widely used JSDMin the last years. To summarise its principle, take a quick look at Figure 4, from their original publication [@ovaskainen_how_2017]:
+
+![Copy of Figure 4 from Ovaskainen et al. (2017) [@ovaskainen_how_2017]](images/figure4_ovaskainen_2017.png)
+
+### GJAM
+::: {.callout-caution collapse="true"}
+## Work in progress...
+
+Only HMSC has been implemented into our code for now. GJAM is under consideration, as well as other SDMs: RF, SSDM, deep-SDMs, ...
+
+↳ This section will be updated when results are available.
+:::
+
+# Proof-of-concept
+## Materials & Methods {#mat-met-stoc-oed}
+The results from the first phase of the BIODICAPT data collection will not be available before early 2027. In the meantine, we can use another (but similar) dataset, already curated and known to work with HMSC: STOC [@valle_species_2024]. 
+
+The French Breeding Bird Survey (FBBS, or STOC in french) is a standardised multi-species abundance dataset, based on a citizen science program. It contains bird sightings and explanatory/environmental variables as the BIODICAPT dataset will. However, as it is already pre-processed, we can work directly with it, out of the box.
+
+![Flowchart of the proof of concept conducted with STOC dataset](images/Flowchart-STOC-data.png){height=1000}
+
+
+## Results compared
+First, we want to make sure that, following the [flowchart](#mat-met-stoc-oed) above, we can actually make better models by adding (50-150) new points to our dataset.
+
+### Reference results
+To test this, we draw on *Mondain-Monval et al.* work [@mondainmonval_adaptive_2024]. However, it is only a base on which we build, not an exact replica, as our method is quite different from the original *Mondain-Monval et al.* publication:
+
+
+| Parameter            | M.M.                                     | Ours                    |
+| :--------:           | :-------------:                          | :-----:                 |
+| Dataset              | Simulated with `virtualspecies` package  | STOC annual sampling    |
+| Number of species    | 50 species                               | 5 species               |
+| Number of variables  | 10 (randomly selected from 33 available) | 6 (direct from STOC)    |
+| Model type           | Ensemble model (GLM + GAM + RF)          | HMSC                    |
+| Re-training strategy | Re-sampling of 1%, 10% or 50% of dataset | Addition of new samples |
+| Training size        | 2000 cells                               | 125 cells + new data    |
+
+With this context in mind, here are their results:
+
+![Copy of Figure 3a mondain-monval et al., 2024](images/figure3_mondain-monval_2024.png)
+
+### Our results
+```{r}
+#| label: setup-and-compute
+#| echo: false
+#| warning: false
+renv::load(here::here())
+
+##### Libraries ##### ---------------------------------------------------------
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(cli))
+suppressPackageStartupMessages(source(here::here(
+    file.path("R", "utils_figures.R"))))
+suppressPackageStartupMessages(source(here::here(
+    file.path("R", "utils_models.R"))))
+
+##### Parameters ##### --------------------------------------------------------
+source(here::here(file.path("data","config","config.R")))
+COLUMN <- "strategy"
+SUBFOLDER <- "STOC-OED"
+parameters <- readRDS(here::here(
+    file.path(RESULTS_PATH, SUBFOLDER, "parameters.rds")))
+COMBINATIONS <- parameters$COMBINATIONS
+param_grid <- build_param_grid(COMBINATIONS)
+
+##### Helper functions ##### --------------------------------------------------
+loop_selector <- function(grid, loop_on, base = parameters$BASE_COMBINATION){
+    # initialize base values
+    combination <- list(
+        train_size = base$TRAIN_SIZES,
+        r_effect = base$R_EFFECTS,
+        strategy = base$STRATEGIES[1],
+        formulas = base$HMSC_XFORMULAS,
+        n_new_samples = base$NEW_SAMPLE_SIZE[1]
+    )
+
+    # replace formulas by number of variables
+    combination$formulas <- lapply(
+            lapply(combination$formulas, all.vars), 
+        length)
+    
+    # if looping on strategies, change base new_sample_size
+    if (loop_on == "strategy") {
+        combination$n_new_samples <- base$NEW_SAMPLE_SIZE[2]
+    }
+
+    # if looping on new_samples, change base strategy
+    if (loop_on == "n_new_samples") {
+        combination$strategy <- base$STRATEGIES[2]
+    }
+
+    # replace single value by list to loop on
+    combination[[loop_on]] <- unique(param_grid[[loop_on]])
+
+    # a preffix, and a suffix in two parts
+    path_sections <- list("", "")
+    path_idx <- 1
+    parameter_names <- c(
+        "r_effect", "strategy", "n_new_samples", "train_size", "formulas")
+    path_names <- c(
+        "model_random-", "_strategy-", "_new-samples-", "_training-size-", 
+        "_n-variables-")
+
+    # when reaching vector of item in list, switch to next path section
+    for (p in seq_along(parameter_names)) {
+        if (length(combination[[parameter_names[p]]]) > 1) {
+            path_sections[[path_idx]] <- paste0(
+                path_sections[[path_idx]],
+                path_names[p]
+            )
+            path_idx <- path_idx + 1
+        } else {
+            path_sections[[path_idx]] <- paste0(
+                path_sections[[path_idx]],
+                path_names[p], combination[[parameter_names[p]]]
+            )
+        }
+    }
+    path_sections[[2]] <- paste0(path_sections[[2]], "_k")
+
+    return(path_sections)
+}
+
+##### Main ##### --------------------------------------------------------------
+filename_sections <- loop_selector(param_grid, COLUMN)
+loop_list <- unique(param_grid[[COLUMN]])
+```
+
+::: {.panel-tabset}
+## Boxplot differences
+```{r, fig.dim=c(11, 6)}
+#| label: copy of fig3a
+#| echo: false
+#| warning: false
+. <- suppressMessages(boxplot_compare_scores(
+    parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)), 
+    reference_model_path = paste0(
+        filename_sections[[1]], loop_list[1], filename_sections[[2]]), 
+    loop_prefix = filename_sections[[1]], 
+    loop_elements = loop_list[-1], 
+    loop_suffix = filename_sections[[2]], 
+    k_fold = parameters$K_FOLDS, 
+    metric = "MSE",
+    subset_names = c("train", "val", "test"),
+    xlabel = paste0(
+        "Effect of ", tolower(COLUMN),
+        ", compared to '", loop_list[1], "'"), 
+    group_species = TRUE,
+    species_names = parameters$Y_SPECIES,
+    save_to = NULL))
+```
+
+## Dotwhisker differences
+```{r, fig.dim=c(11, 6)}
+#| label: copy of fig3a bis
+#| echo: false
+#| warning: false
+. <- suppressMessages(dotwhisker_model_scores(
+    parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)), 
+    save_to = NULL,
+    loop_prefix = filename_sections[[1]], 
+    loop_elements = loop_list, 
+    loop_suffix = filename_sections[[2]], 
+    k_fold = parameters$K_FOLDS, 
+    metric = "MSE",
+    xlabel = "Difference in RMSE", 
+    ylabel = paste0(
+        "Effect of ", tolower(COLUMN),
+        ", compared to '", loop_list[1], "'"),
+    group_species = TRUE,
+    species_names = parameters$Y_SPECIES))
+```
+
+## Boxplot improvement
+```{r, fig.dim=c(11, 6)}
+#| label: copy of fig3b
+#| echo: false
+#| warning: false
+. <- suppressMessages(boxplot_sp_improvements(
+    parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)), 
+    reference_model_path = paste0(
+            filename_sections[[1]], loop_list[1], filename_sections[[2]]), 
+    loop_prefix = filename_sections[[1]], 
+    loop_elements = loop_list[-1], 
+    loop_suffix = filename_sections[[2]], 
+    k_fold = parameters$K_FOLDS, 
+    metric = "MSE",
+    xlabel = paste0(
+            "Effect of ", tolower(COLUMN),
+            ", compared to '", loop_list[1], "'"), 
+    subset_names = c("train", "val", "test"),
+    proportion = 1/100,
+    save_to = NULL))
+```
+:::
+
+*BAU: Business-as-usual ; GF: Gap-filling ; SU: Simplified-uncertainty*
+
+### Discussion of comparison
+
+#### What can we see?
+
+Mondain-Monval et al. [@mondainmonval_adaptive_2024] show results in boxplots, for several proportion of their modified. We show results for the same addition of training points, but divided into train/val/test subsets. 
+
+In our results, differences in MSE between resampling strategies are slight, less marked than those of [@mondainmonval_adaptive_2024]. However, we note that the "BAU" strategy yields to a more visible decrease in MSE (aka decrease of errors). 
+
+It is also a surprise to note that the strategy "SU" does not yield to the best results (which was what we expected from [@mondainmonval_adaptive_2024]). When looking at the boxplots for the training scores of "SU", an explanation could be that the model was confronted to much variability (compared other training subsets), which as a sligthly negative impact on predictions in test. This is actually quite logical: the "SU" strategy adds training samples for which the predictions of the model are the most uncertain, which is why variability is wider.
+
+
+#### What to conclude?
+
+Subset comparisons confirm that training is harder with new unknown samples, but validation scores are better, as well as test scores. However, the differences with the base strategy is not statitically significant.
+
+Overall, the addition of new points in the sampling strategies has slight a positive effect on the predictions of the models on the test set. The best performing strategy on our practical dataset, using HMSC, seems to be "gap-filling" (GF). 
+
+## Other results
+### Training size
+::: {.panel-tabset}
+```{r, fig.dim=c(11, 6)}
+#| echo: false
+#| warning: false
+COLUMN <- "train_size"
+filename_sections <- loop_selector(param_grid, COLUMN)
+loop_list <- unique(param_grid[[COLUMN]])
+loop_list <- sort(loop_list)
+```
+
+#### Boxplot differences
+```{r, fig.dim=c(11, 6)}
+#| label: training_size_1
+#| echo: false
+#| warning: false
+. <- suppressMessages(boxplot_compare_scores(
+    parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)), 
+    reference_model_path = paste0(
+        filename_sections[[1]], loop_list[1], filename_sections[[2]]), 
+    loop_prefix = filename_sections[[1]], 
+    loop_elements = loop_list[-1], 
+    loop_suffix = filename_sections[[2]], 
+    k_fold = parameters$K_FOLDS, 
+    metric = "MSE",
+    subset_names = c("train", "val", "test"),
+    xlabel = paste0(
+        "Effect of ", tolower(COLUMN),
+        ", compared to '", loop_list[1], "'"), 
+    group_species = TRUE,
+    species_names = parameters$Y_SPECIES,
+    save_to = NULL))
+```
+
+#### Lineplot
+```{r, fig.dim=c(11, 6)}
+#| label: training_size_2
+#| echo: false
+#| warning: false
+. <- suppressMessages(barplot_raw_scores(
+    parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)), 
+    save_to = NULL,
+    loop_prefix = filename_sections[[1]], 
+    loop_elements = loop_list, 
+    loop_suffix = filename_sections[[2]], 
+    k_fold = parameters$K_FOLDS, 
+    xlabel = paste0("Effect of ", tolower(COLUMN)," type on metrics"), 
+    ylabel = "Average score per species",
+    group_species = TRUE,
+    species_names = parameters$Y_SPECIES,
+    barplot = FALSE,
+    add_stats = TRUE))
+```
+:::
+
+
+
+### Number of new samples
+::: {.panel-tabset}
+```{r, fig.dim=c(11, 6)}
+#| echo: false
+#| warning: false
+COLUMN <- "n_new_samples"
+filename_sections <- loop_selector(param_grid, COLUMN)
+loop_list <- unique(param_grid[[COLUMN]])
+loop_list <- sort(loop_list)
+```
+
+#### Boxplot differences
+```{r, fig.dim=c(11, 6)}
+#| label: new_samples_1
+#| echo: false
+#| warning: false
+. <- suppressMessages(boxplot_compare_scores(
+    parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)), 
+    reference_model_path = paste0(
+        filename_sections[[1]], loop_list[1], filename_sections[[2]]), 
+    loop_prefix = filename_sections[[1]], 
+    loop_elements = loop_list[-1], 
+    loop_suffix = filename_sections[[2]], 
+    k_fold = parameters$K_FOLDS, 
+    metric = "MSE",
+    subset_names = c("train", "val", "test"),
+    xlabel = paste0(
+        "Effect of ", tolower(COLUMN),
+        ", compared to '", loop_list[1], "'"), 
+    group_species = TRUE,
+    species_names = parameters$Y_SPECIES,
+    save_to = NULL))
+```
+
+#### Lineplot
+```{r, fig.dim=c(11, 6)}
+#| label: new_samples_2
+#| echo: false
+#| warning: false
+. <- suppressMessages(barplot_raw_scores(
+    parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)), 
+    save_to = NULL,
+    loop_prefix = filename_sections[[1]], 
+    loop_elements = loop_list, 
+    loop_suffix = filename_sections[[2]], 
+    k_fold = parameters$K_FOLDS, 
+    xlabel = paste0("Effect of ", tolower(COLUMN)," type on metrics"), 
+    ylabel = "Average score per species",
+    group_species = TRUE,
+    species_names = parameters$Y_SPECIES,
+    barplot = FALSE,
+    add_stats = TRUE))
+```
+:::
+
+
+### Number of explicative variables
+::: {.panel-tabset}
+```{r, fig.dim=c(11, 6)}
+#| echo: false
+#| warning: false
+COLUMN <- "formulas"
+filename_sections <- loop_selector(param_grid, COLUMN)
+loop_list <- unique(param_grid[[COLUMN]])
+loop_list <- sapply(lapply(loop_list, all.vars), length)
+loop_list <- sort(loop_list)
+```
+
+#### Boxplot differences
+```{r, fig.dim=c(11, 6)}
+#| label: formulas_1
+#| echo: false
+#| warning: false
+. <- suppressMessages(boxplot_compare_scores(
+    parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)), 
+    reference_model_path = paste0(
+        filename_sections[[1]], loop_list[1], filename_sections[[2]]), 
+    loop_prefix = filename_sections[[1]], 
+    loop_elements = loop_list[-1], 
+    loop_suffix = filename_sections[[2]], 
+    k_fold = parameters$K_FOLDS, 
+    metric = "MSE",
+    subset_names = c("train", "val", "test"),
+    xlabel = paste0(
+        "Effect of ", tolower(COLUMN),
+        ", compared to '", loop_list[1], "'"), 
+    group_species = TRUE,
+    species_names = parameters$Y_SPECIES,
+    save_to = NULL))
+```
+
+#### Lineplot
+```{r, fig.dim=c(11, 6)}
+#| label: formulas_2
+#| echo: false
+#| warning: false
+. <- suppressMessages(barplot_raw_scores(
+    parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)), 
+    save_to = NULL,
+    loop_prefix = filename_sections[[1]], 
+    loop_elements = loop_list, 
+    loop_suffix = filename_sections[[2]], 
+    k_fold = parameters$K_FOLDS, 
+    xlabel = paste0("Effect of ", tolower(COLUMN)," type on metrics"), 
+    ylabel = "Average score per species",
+    group_species = TRUE,
+    species_names = parameters$Y_SPECIES,
+    barplot = FALSE,
+    add_stats = TRUE))
+```
+:::
+
+### Random Effect
+::: {.panel-tabset}
+```{r, fig.dim=c(11, 6)}
+#| echo: false
+#| warning: false
+COLUMN <- "r_effect"
+filename_sections <- loop_selector(param_grid, COLUMN)
+loop_list <- unique(param_grid[[COLUMN]])
+```
+
+#### Boxplot differences
+```{r, fig.dim=c(11, 6)}
+#| label: r_effect_1
+#| echo: false
+#| warning: false
+. <- suppressMessages(boxplot_compare_scores(
+    parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)), 
+    reference_model_path = paste0(
+        filename_sections[[1]], loop_list[1], filename_sections[[2]]), 
+    loop_prefix = filename_sections[[1]], 
+    loop_elements = loop_list[-1], 
+    loop_suffix = filename_sections[[2]], 
+    k_fold = parameters$K_FOLDS, 
+    metric = "MSE",
+    subset_names = c("train", "val", "test"),
+    xlabel = paste0(
+        "Effect of ", tolower(COLUMN),
+        ", compared to '", loop_list[1], "'"), 
+    group_species = TRUE,
+    species_names = parameters$Y_SPECIES,
+    save_to = NULL))
+```
+
+#### Dotwhisker differences
+```{r, fig.dim=c(11, 6)}
+#| label: r_effect_2
+#| echo: false
+#| warning: false
+. <- suppressMessages(dotwhisker_model_scores(
+    parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)), 
+    save_to = NULL,
+    loop_prefix = filename_sections[[1]], 
+    loop_elements = loop_list, 
+    loop_suffix = filename_sections[[2]], 
+    k_fold = parameters$K_FOLDS, 
+    metric = "MSE",
+    xlabel = "Difference in RMSE", 
+    ylabel = paste0(
+        "Effect of ", tolower(COLUMN),
+        ", compared to '", loop_list[1], "'"),
+    group_species = TRUE,
+    species_names = parameters$Y_SPECIES))
+```
+
+#### Boxplot improvement
+```{r, fig.dim=c(11, 6)}
+#| label: r_effect_3
+#| echo: false
+#| warning: false
+. <- suppressMessages(boxplot_sp_improvements(
+    parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)), 
+    reference_model_path = paste0(
+            filename_sections[[1]], loop_list[1], filename_sections[[2]]), 
+    loop_prefix = filename_sections[[1]], 
+    loop_elements = loop_list[-1], 
+    loop_suffix = filename_sections[[2]], 
+    k_fold = parameters$K_FOLDS, 
+    metric = "MSE",
+    xlabel = paste0(
+            "Effect of ", tolower(COLUMN),
+            ", compared to '", loop_list[1], "'"), 
+    subset_names = c("train", "val", "test"),
+    proportion = 1/100,
+    save_to = NULL))
+```
+:::
+
+## Discussion of other results
+Looking at the other plots :
+- Training size as a significant (all p-values < 0.001) effect on scores.
+- Number of new samples does not seem to have any significant effect (which is weird).
+- Number of explicative variables as an effect (all p-values < 0.001).
+- Adding a random effect to HMSC yields to better scores in training but no differences in val or test.
+
+Overall, the larger the number of training samples, explicative variables and/or new samples, the better the model performs in val/test, and the worst it performs in training. Although the effects are small, they are comparable to the ones of [@mondainmonval_adaptive_2024], and our results show that this as an impact on predictions (improvements by >1% increases).
+
+*Results "per species" are available but not discussed in this report, see PDF files in `outputs/figures/STOC-OED/`*
