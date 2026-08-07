@@ -27,8 +27,25 @@ X_AVAILABLES <- c(
     "NDVI", "light_pollution", "p_milieu", 
     "altitude", "precip_spring", "tmp_spring")
 X_FACTORS <- c("p_milieu") # ensures the right format for X_AVAILABLES
-Y_SPECIES <- c("Sylvia_atricapilla", "Parus_major", "Pica_pica", 
-    "Carduelis_cannabina", "Periparus_ater")
+Y_SPECIES <- c(
+    # 5 most sighted
+    "Sylvia_atricapilla",
+    "Fringilla_coelebs",
+    "Turdus_merula",
+    "Parus_major",
+    "Columba_palumbus",
+    # 5 midly sigthed
+    "Dendrocopos_major",
+    "Carduelis_chloris",
+    "Pica_pica",
+    "Phoenicurus_ochruros",
+    "Sylvia_communis",
+    # 5 least sighted
+    "Carduelis_cannabina",
+    "Serinus_serinus",
+    "Turdus_viscivorus",
+    "Anthus_trivialis",
+    "Periparus_ater")
 
 ### Data
 MAX_TRAIN_SIZE <- 125 # Number of point used for training
@@ -338,8 +355,8 @@ for (k in seq(K_FOLDS)) {
             PATH_STOC_RESULTS, 
             paste0(
                 "model_random-", BASE_COMBINATION$R_EFFECTS,
-                "_strategy-", BASE_COMBINATION$STRATEGIES,
-                "_new-samples-", BASE_COMBINATION$NEW_SAMPLE_SIZES,
+                "_strategy-", BASE_COMBINATION$STRATEGIES[1],
+                "_new-samples-", BASE_COMBINATION$NEW_SAMPLE_SIZES[1],
                 "_training-size-", BASE_COMBINATION$TRAIN_SIZES,
                 "_n-variables-", 
                 length(all.vars(BASE_COMBINATION$HMSC_XFORMULAS[[1]])),
