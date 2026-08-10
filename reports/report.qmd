@@ -1,15 +1,19 @@
 ---
 title: "BIODICAPT: Optimal Experimental Design"
-title-block-banner: true
+
+author:
+  - name: Loïc Lehnhoff
+    orcid: 0000-0002-2100-6626
+    email: loic.lehnhoff@mnhn.fr
+    affiliation: UMR CESCO
 
 date: last-modified
 date-format: iso
 
-page-layout: article
-
 toc: true
 toc-location: right
-toc-depth: 6
+toc-depth: 4
+toc-expand: 2
 number-sections: false
 
 bibliography: references.bib
@@ -18,12 +22,22 @@ csl: vancouver.csl
 theme:
   light: brite-mnhn.scss
 
-author:
-  - name: Loïc Lehnhoff
-    orcid: 0000-0002-2100-6626
-    email: loic.lehnhoff@mnhn.fr
-    affiliation: UMR CESCO
+format:
+  html:
+    page-layout: article
+  pdf:
+    documentclass: article
+    papersize: a4
+    geometry:
+      - margin=30mm
+
+knitr:
+  opts_chunk:
+    dev: "cairo_pdf"
 ---
+
+\thispagestyle{empty}
+\newpage
 
 # Introduction
 ## OED
@@ -78,7 +92,7 @@ The results from the first phase of the BIODICAPT data collection will not be av
 
 The French Breeding Bird Survey (FBBS, or STOC in french) is a standardised multi-species abundance dataset, based on a citizen science program. It contains bird sightings and explanatory/environmental variables as the BIODICAPT dataset will. However, as it is already pre-processed, we can work directly with it, out of the box.
 
-![Flowchart of the proof of concept conducted with STOC dataset](images/Flowchart-STOC-data.png){height=1000}
+![Flowchart of the proof of concept conducted with STOC dataset](images/Flowchart-STOC-data.png){height=750}
 
 
 ## Results compared
@@ -532,3 +546,5 @@ Looking at the other plots :
 Overall, the larger the number of training samples, explicative variables and/or new samples, the better the model performs in val/test, and the worst it performs in training. Although the effects are small, they are comparable to the ones of [@mondainmonval_adaptive_2024], and our results show that this as an impact on predictions (improvements by >1% increases).
 
 *Results "per species" are available but not discussed in this report, see PDF files in `outputs/figures/STOC-OED/`*
+
+\newpage
