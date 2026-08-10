@@ -2,11 +2,11 @@
 
 #SBATCH --job-name=BIODICAPT
 #SBATCH --partition=std
-#SBATCH --mem=32G
+#SBATCH --mem=96G
 #SBATCH --ntasks=1
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=3 # number of chains to run (NOT number of K-folds)
-#SBATCH --time=00-06:00:00
+#SBATCH --time=00-10:00:00
 
 export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK}
 

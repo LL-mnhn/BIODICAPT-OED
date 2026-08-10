@@ -315,6 +315,10 @@ for (k in seq(K_FOLDS)) {
         if (strategy == "none") {
             n_new_samples <- 0
         }
+        # if n_new_samples is 0, no need to apply a strategy, use "none"
+        if (n_new_samples == 0) {
+            strategy <- "none"
+        }
 
         # Display current setup
         id_loop <- id_loop + 1
