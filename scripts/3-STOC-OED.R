@@ -185,10 +185,11 @@ prepare_necessities <- function() {
         
         if (identical(current_params, previous_params)) {
             # load file
-            cli_alert_info("Loading data splits...")
+            cli_alert_info("Parameters are identical, loading data splits...")
             k_fold_points <- readRDS(
                 file.path(PATH_STOC_RESULTS, "k_fold_points.rds"))
         } else if (authorize_overwrite(PATH_STOC_RESULTS)) {
+                cli_alert_info("Parameters found are different from current ones..")
                 k_fold_points <- remake_files()
         } else {
             stop("User refused overwriting of local files.")
@@ -268,7 +269,6 @@ extended_training_design <- function(
                 base_subset,
                 extension_subset[idx_most_uncertain, ])
     
-
     } else if (strat == "true-uncertainty") {
         # In the previous version, we picked the most uncertain points at once.
         # This in a good approximation but it lacks precision: by re-training
@@ -373,32 +373,55 @@ for (k in seq(K_FOLDS)) {
                 " Did you call a similar model with strategy='none' first?"))
         }
 
-        training_set <- extended_training_design(
-            strat = strategy,
-            base_subset = training_set, 
-            extension_subset = subsets$new_pool,
-            new_sample_size = n_new_samples,
-            variables = x_variables,
-            hM = readRDS(path_base_model))
+        # if strategy is X_parts, divide the number of samples and fit as many
+        # times as necessary
+        pattern_n_parts <- "([^_]+)-part-"
+        regex_parts <- regmatches(strategy, regexec(pattern_n_parts, strategy))
+        n_parts <- ifelse(
+            is.na(regex_parts[[1]][2]), 1, as.numeric(regex_parts[[1]][2]))
+        strategy_alone <- substring(
+            strategy, 
+            ifelse((n_parts == 1), 1, nchar(regex_parts[[1]][1])+1), 
+            nchar(strategy))
+        path_previous_model <- path_base_model
+        n_new_samples_per_part <- split_evenly(n_new_samples, n_parts)
+        
+        # If loop runs n times (n>1), the model used to compute the second part
+        # of the dataset becomes the model computed on part n-1.
+        # This *could* be a problem since `training_set` is updated but not
+        # `subsets$new_pool`. (samples in new_pool could be sampled n times).
+        for (part in 1:n_parts) {
+            training_set <- extended_training_design(
+                strat = strategy_alone,
+                base_subset = training_set, 
+                extension_subset = subsets$new_pool,
+                new_sample_size = n_new_samples_per_part[part],
+                variables = x_variables,
+                hM = readRDS(path_previous_model))
 
-        # 1. Fit model
-        cat("\n")
-        cli_alert_info("1. Fitting model...")
-        base_model <- prepare_hmsc_training(
-            subset = training_set,
-            x_cols = x_variables, 
-            y_cols = if (is.null(Y_SPECIES)) NAMES_SPECIES else Y_SPECIES,
-            formula = formula,
-            random_effect = r_effect)
-        fitted_model <- fitting_hmsc(
-            hM = base_model, 
-            save_to = file.path(path_local_results, "chains.rds"),
-            nchains = NCHAINS,
-            thin = THIN,
-            nsamples = NSAMPLES,
-            ntransient = NTRANSIENT,
-            freq_verbose = (NSAMPLES*2 + NTRANSIENT)/10,
-            allow_parallel = TRUE)
+            # 1. Fit model
+            cat("\n")
+            cli_alert_info("1. Fitting model...")
+            base_model <- prepare_hmsc_training(
+                subset = training_set,
+                x_cols = x_variables, 
+                y_cols = if (is.null(Y_SPECIES)) NAMES_SPECIES else Y_SPECIES,
+                formula = formula,
+                random_effect = r_effect)
+            fitted_model <- fitting_hmsc(
+                hM = base_model, 
+                save_to = file.path(path_local_results, "chains.rds"),
+                nchains = NCHAINS,
+                thin = THIN,
+                nsamples = NSAMPLES,
+                ntransient = NTRANSIENT,
+                freq_verbose = (NSAMPLES*2 + NTRANSIENT)/10,
+                allow_parallel = TRUE)
+            
+            # previous model becomes the one we just computed
+            path_previous_model <- file.path(path_local_results, "chains.rds")
+        }
+
 
         # 2. Analysis of convergence
         cli_alert_info("2. Convergence diagnostics...")

@@ -39,6 +39,15 @@ typeline <- function(prompt = "Enter text: ") {
     return(txt)
 }
 
+# A function that splits a number into as-equal-as-possible integer parts
+split_evenly <- function(number, divisions) {
+  base <- number %/% divisions        # integer division
+  remainder <- number %% divisions    # remainder
+
+  parts <- c(rep(base + 1, remainder), rep(base, divisions - remainder))
+  return(parts)
+}
+
 # A function to ask the user if he wants to overwrite a file.
 # ARGS:
 #   - path: a path (folder or file) to check.
