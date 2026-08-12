@@ -3,11 +3,8 @@
 ## Overview
 This repository focuses on **Optimal Experimental Designs (OEDs)** for the BIODICAPT project. 
 
-> [!WARNING]
-> This repository is still under active development and might not run as intented on external machines.
-
-> [!TIP]
-> Pending the publication of our methodoly and results, you can find our thoughts in the [resources folder](resources).
+> [!IMPORTANT]
+> Pending the publication of our methodology and results, you can find a quick analysis of our results in the `reports` folder, or directly through [**this link**](https://ll-mnhn.github.io/BIODICAPT-OED/reports/report.html).
 
 ## Context
 ### BIODICAPT
