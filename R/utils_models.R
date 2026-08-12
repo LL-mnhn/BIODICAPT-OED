@@ -763,9 +763,43 @@ finalize_plot <- function(p, save_to, what = "performances") {
 #   - subset_name: a string. Name of the subset in `{subset_name}_scores.csv`.
 #   - metric: a string. Metric to extract from file (MSE, RMSE, AUC or TjuR2).
 load_metric_scores <- function(run_path, subset_name, metric) {
+    # SECURITY : run logical check before importation of scores
+    pattern_strategy <- "strategy-([^_]+)_new"
+    pattern_new_samples <- "new-samples-([^_]+)_training"
+
+    extracted_strategy <- regmatches(
+        run_path, regexec(pattern_strategy, run_path))[[1]][2]
+    extracted_new_samples <- regmatches(
+        run_path, regexec(pattern_new_samples, run_path))[[1]][2]
+
+    if (extracted_strategy == "none") {
+        if (extracted_new_samples != "0") {
+            cli_alert_warning(paste0(
+                "Found unconsistent number of new samples '", 
+                extracted_new_samples, "' for strategy '", 
+                extracted_strategy , "'. Replacing by '0'."))
+            run_path <- sub(
+                pattern_new_samples, "new-samples-0_training", 
+                run_path)
+        }
+    }
+    if (extracted_new_samples == "0") {
+        if (extracted_strategy != "none") {
+            cli_alert_warning(paste0(
+                "Found unconsistent strategy name '", 
+                extracted_strategy, "' for number of new samples '", 
+                extracted_new_samples , "'. Replacing by 'none'."))
+            run_path <- sub(
+                pattern_strategy, "strategy-none_new", 
+                run_path)
+        }
+    }    
+
     file_path <- file.path(run_path, paste0(subset_name, "_scores.csv"))
     df <- read_csv(file_path, show_col_types = FALSE)
-    if (metric == "MSE") {
+    if (is.null(metric)) {
+        df
+    } else if (metric == "MSE") {
         df$RMSE^2
     } else if (metric %in% c("RMSE", "AUC", "TjurR2")) {
         df[[metric]]
@@ -1099,9 +1133,9 @@ barplot_raw_scores <- function(
                 paste0(loop_prefix, loop_element, loop_suffix, k))
 
             for (subset_name in subset_names) {
-                subset_scores <- read_csv(
-                    file.path(run_path, paste0(subset_name, "_scores.csv")),
-                    show_col_types = FALSE) |>
+                local_csv <- load_metric_scores(
+                    run_path, subset_name, metric = NULL)
+                subset_scores <- local_csv |>
                     mutate(species = species_names) |>
                     pivot_longer(
                         cols = c(RMSE, AUC, TjurR2),
@@ -1337,9 +1371,9 @@ dotwhisker_model_scores <- function(
                 parent_folder, paste0(loop_prefix, element, loop_suffix, k))
 
             for (subset_name in subset_names) {
-                subset_scores <- read_csv(
-                    file.path(run_path, paste0(subset_name, "_scores.csv")),
-                    show_col_types = FALSE) |>
+                local_csv <- load_metric_scores(
+                    run_path, subset_name, metric = NULL)
+                subset_scores <- local_csv |>
                     mutate(species = species_names) |>
                     pivot_longer(
                         cols = c(RMSE, AUC, TjurR2),

@@ -22,6 +22,11 @@ csl: vancouver.csl
 theme:
   light: brite-mnhn.scss
 
+execute:
+  fig-format: png
+  fig-dpi: 300
+  dev: cairo_pdf
+
 format:
   html:
     page-layout: article
@@ -30,10 +35,6 @@ format:
     papersize: a4
     geometry:
       - margin=30mm
-
-knitr:
-  opts_chunk:
-    dev: "cairo_pdf"
 ---
 
 \thispagestyle{empty}
@@ -41,14 +42,14 @@ knitr:
 
 # Introduction
 ## OED
-**Optimal Experimental Design** (or OED for short[^1]) is a method for designing experiments that aims at maximising information gain while minimising a cost function. This cost function can encompass uncertainty, cost, time... it is up 
+**Optimal Experimental Design** (or OED for short) is a method for designing experiments that aims at maximising information gain while minimising a cost function. This cost function can encompass uncertainty, cost, time... it is up 
 to the user to select the parameters to optimise.
 
 [The key concept is that **not all observations are equally informative**.]{.mark} 
 
-This concept can be particularly interesting when working in participartory science, which is our case for the BIODICAPT project.
+This concept[^1] can be particularly interesting when working in participartory science, which is our case for the BIODICAPT project.
 
-[^1]: Sometimes, this concept is also referred to as "adaptive sampling".
+[^1]: Sometimes, also referred to as "adaptive sampling".
 
 ## BIODICAPT
 
@@ -103,12 +104,12 @@ To test this, we draw on *Mondain-Monval et al.* work [@mondainmonval_adaptive_2
 
 
 | Parameter            | M.M.                                     | Ours                    |
-| :--------:           | :-------------:                          | :-----:                 |
+|:--------:            |:-------------:                           |:-----:                  |
 | Dataset              | Simulated with `virtualspecies` package  | STOC annual sampling    |
 | Number of species    | 50 species                               | 5 species               |
 | Number of variables  | 10 (randomly selected from 33 available) | 6 (direct from STOC)    |
 | Model type           | Ensemble model (GLM + GAM + RF)          | HMSC                    |
-| Re-training strategy | Re-sampling of 1%, 10% or 50% of dataset | Addition of new samples |
+| Re-training strategy | Re-sampling of 1%, 10% or 50% of dataset | Addition of new samples (50) |
 | Training size        | 2000 cells                               | 125 cells + new data    |
 
 With this context in mind, here are their results:
@@ -203,12 +204,12 @@ loop_list <- unique(param_grid[[COLUMN]])
 ```
 
 ::: {.panel-tabset}
-## Boxplot differences
+#### Boxplot differences
 ```{r, fig.dim=c(11, 6)}
 #| label: copy of fig3a
 #| echo: false
 #| warning: false
-. <- suppressMessages(boxplot_compare_scores(
+. <- (boxplot_compare_scores(
     parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)), 
     reference_model_path = paste0(
         filename_sections[[1]], loop_list[1], filename_sections[[2]]), 
@@ -226,28 +227,7 @@ loop_list <- unique(param_grid[[COLUMN]])
     save_to = NULL))
 ```
 
-## Dotwhisker differences
-```{r, fig.dim=c(11, 6)}
-#| label: copy of fig3a bis
-#| echo: false
-#| warning: false
-. <- suppressMessages(dotwhisker_model_scores(
-    parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)), 
-    save_to = NULL,
-    loop_prefix = filename_sections[[1]], 
-    loop_elements = loop_list, 
-    loop_suffix = filename_sections[[2]], 
-    k_fold = parameters$K_FOLDS, 
-    metric = "MSE",
-    xlabel = "Difference in RMSE", 
-    ylabel = paste0(
-        "Effect of ", tolower(COLUMN),
-        ", compared to '", loop_list[1], "'"),
-    group_species = TRUE,
-    species_names = parameters$Y_SPECIES))
-```
-
-## Boxplot improvement
+#### Boxplot improvement
 ```{r, fig.dim=c(11, 6)}
 #| label: copy of fig3b
 #| echo: false
@@ -268,26 +248,52 @@ loop_list <- unique(param_grid[[COLUMN]])
     proportion = 1/100,
     save_to = NULL))
 ```
+
+#### Dotwhisker differences
+```{r, fig.dim=c(11, 6)}
+#| label: copy of fig3a bis
+#| echo: false
+#| warning: false
+. <- suppressMessages(dotwhisker_model_scores(
+    parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)), 
+    save_to = NULL,
+    loop_prefix = filename_sections[[1]], 
+    loop_elements = loop_list, 
+    loop_suffix = filename_sections[[2]], 
+    k_fold = parameters$K_FOLDS, 
+    metric = "MSE",
+    xlabel = "Difference in RMSE", 
+    ylabel = paste0(
+        "Effect of ", tolower(COLUMN),
+        ", compared to '", loop_list[1], "'"),
+    group_species = TRUE,
+    species_names = parameters$Y_SPECIES))
+```
+
 :::
 
 *BAU: Business-as-usual ; GF: Gap-filling ; SU: Simplified-uncertainty*
 
-### Discussion of comparison
+### Interlude: discussion 
 
 #### What can we see?
 
-Mondain-Monval et al. [@mondainmonval_adaptive_2024] show results in boxplots, for several proportion of their modified. We show results for the same addition of training points, but divided into train/val/test subsets. 
+Mondain-Monval et al. [@mondainmonval_adaptive_2024] and we computed the difference in MSE between a base strategy (business-as-usual) and other strategies. However, our training sets were not built in the same way:
+- Mondain-Monval et al. [@mondainmonval_adaptive_2024] **changed a proportion of their training set** (1%, 10%; 50%) according to the chosen strategy.
+- We ** added new samples to our training set** (50, with a base strategy of 125 samples) according to the chosen strategy.
 
-In our results, differences in MSE between resampling strategies are slight, less marked than those of [@mondainmonval_adaptive_2024]. However, we note that the "BAU" strategy yields to a more visible decrease in MSE (aka decrease of errors). 
+Our figures also show scores in train/val/test. We assume Mondain-Monval et al. [@mondainmonval_adaptive_2024] show only scores in test.
 
-It is also a surprise to note that the strategy "SU" does not yield to the best results (which was what we expected from [@mondainmonval_adaptive_2024]). When looking at the boxplots for the training scores of "SU", an explanation could be that the model was confronted to much variability (compared other training subsets), which as a sligthly negative impact on predictions in test. This is actually quite logical: the "SU" strategy adds training samples for which the predictions of the model are the most uncertain, which is why variability is wider.
+In our results, differences in MSE between resampling strategies are slight, less marked than those of [@mondainmonval_adaptive_2024]. Statistical tests reveal that there is no significant differences in the test scores. What can be observed is that the "BAU" strategy yields to a more visible decrease in MSE (aka a decrease in errors). Interestingly, the "SU" strategy does not yield to the best results (which was what we expected from [@mondainmonval_adaptive_2024]).
+
+This is actually quite logical: the "SU" strategy adds training samples for which the predictions of the model are the most uncertain, which is why variability is wider in prediction.
 
 
 #### What to conclude?
 
-Subset comparisons confirm that training is harder with new unknown samples, but validation scores are better, as well as test scores. However, the differences with the base strategy is not statitically significant.
+Subset comparisons confirm that training is harder with new unknown samples (training scores dropped), but test scores are better. 
 
-Overall, the addition of new points in the sampling strategies has slight a positive effect on the predictions of the models on the test set. The best performing strategy on our practical dataset, using HMSC, seems to be "gap-filling" (GF). 
+Overall, the addition of new points in the sampling strategies has a slight positive effect on the predictions of the models on the test set. The best performing strategy on our practical dataset, using HMSC, seems to be "gap-filling" (GF). However, the differences are not statitically significant.
 
 ## Other results
 ### Training size
@@ -324,9 +330,31 @@ loop_list <- sort(loop_list)
     save_to = NULL))
 ```
 
-#### Lineplot
+#### Boxplot improvement
 ```{r, fig.dim=c(11, 6)}
 #| label: training_size_2
+#| echo: false
+#| warning: false
+. <- suppressMessages(boxplot_sp_improvements(
+    parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)), 
+    reference_model_path = paste0(
+            filename_sections[[1]], loop_list[1], filename_sections[[2]]), 
+    loop_prefix = filename_sections[[1]], 
+    loop_elements = loop_list[-1], 
+    loop_suffix = filename_sections[[2]], 
+    k_fold = parameters$K_FOLDS, 
+    metric = "MSE",
+    xlabel = paste0(
+            "Effect of ", tolower(COLUMN),
+            ", compared to '", loop_list[1], "'"), 
+    subset_names = c("train", "val", "test"),
+    proportion = 1/100,
+    save_to = NULL))
+```
+
+#### Lineplot
+```{r, fig.dim=c(11, 6)}
+#| label: training_size_3
 #| echo: false
 #| warning: false
 . <- suppressMessages(barplot_raw_scores(
@@ -344,7 +372,6 @@ loop_list <- sort(loop_list)
     add_stats = TRUE))
 ```
 :::
-
 
 
 ### Number of new samples
@@ -381,9 +408,31 @@ loop_list <- sort(loop_list)
     save_to = NULL))
 ```
 
-#### Lineplot
+#### Boxplot improvement
 ```{r, fig.dim=c(11, 6)}
 #| label: new_samples_2
+#| echo: false
+#| warning: false
+. <- suppressMessages(boxplot_sp_improvements(
+    parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)), 
+    reference_model_path = paste0(
+            filename_sections[[1]], loop_list[1], filename_sections[[2]]), 
+    loop_prefix = filename_sections[[1]], 
+    loop_elements = loop_list[-1], 
+    loop_suffix = filename_sections[[2]], 
+    k_fold = parameters$K_FOLDS, 
+    metric = "MSE",
+    xlabel = paste0(
+            "Effect of ", tolower(COLUMN),
+            ", compared to '", loop_list[1], "'"), 
+    subset_names = c("train", "val", "test"),
+    proportion = 1/100,
+    save_to = NULL))
+```
+
+#### Lineplot
+```{r, fig.dim=c(11, 6)}
+#| label: new_samples_3
 #| echo: false
 #| warning: false
 . <- suppressMessages(barplot_raw_scores(
@@ -438,9 +487,31 @@ loop_list <- sort(loop_list)
     save_to = NULL))
 ```
 
-#### Lineplot
+#### Boxplot improvement
 ```{r, fig.dim=c(11, 6)}
 #| label: formulas_2
+#| echo: false
+#| warning: false
+. <- suppressMessages(boxplot_sp_improvements(
+    parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)), 
+    reference_model_path = paste0(
+            filename_sections[[1]], loop_list[1], filename_sections[[2]]), 
+    loop_prefix = filename_sections[[1]], 
+    loop_elements = loop_list[-1], 
+    loop_suffix = filename_sections[[2]], 
+    k_fold = parameters$K_FOLDS, 
+    metric = "MSE",
+    xlabel = paste0(
+            "Effect of ", tolower(COLUMN),
+            ", compared to '", loop_list[1], "'"), 
+    subset_names = c("train", "val", "test"),
+    proportion = 1/100,
+    save_to = NULL))
+```
+
+#### Lineplot
+```{r, fig.dim=c(11, 6)}
+#| label: formulas_3
 #| echo: false
 #| warning: false
 . <- suppressMessages(barplot_raw_scores(
@@ -492,30 +563,9 @@ loop_list <- unique(param_grid[[COLUMN]])
     save_to = NULL))
 ```
 
-#### Dotwhisker differences
-```{r, fig.dim=c(11, 6)}
-#| label: r_effect_2
-#| echo: false
-#| warning: false
-. <- suppressMessages(dotwhisker_model_scores(
-    parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)), 
-    save_to = NULL,
-    loop_prefix = filename_sections[[1]], 
-    loop_elements = loop_list, 
-    loop_suffix = filename_sections[[2]], 
-    k_fold = parameters$K_FOLDS, 
-    metric = "MSE",
-    xlabel = "Difference in RMSE", 
-    ylabel = paste0(
-        "Effect of ", tolower(COLUMN),
-        ", compared to '", loop_list[1], "'"),
-    group_species = TRUE,
-    species_names = parameters$Y_SPECIES))
-```
-
 #### Boxplot improvement
 ```{r, fig.dim=c(11, 6)}
-#| label: r_effect_3
+#| label: r_effect_2
 #| echo: false
 #| warning: false
 . <- suppressMessages(boxplot_sp_improvements(
@@ -534,10 +584,31 @@ loop_list <- unique(param_grid[[COLUMN]])
     proportion = 1/100,
     save_to = NULL))
 ```
+
+#### Dotwhisker differences
+```{r, fig.dim=c(11, 6)}
+#| label: r_effect_3
+#| echo: false
+#| warning: false
+. <- suppressMessages(dotwhisker_model_scores(
+    parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)), 
+    save_to = NULL,
+    loop_prefix = filename_sections[[1]], 
+    loop_elements = loop_list, 
+    loop_suffix = filename_sections[[2]], 
+    k_fold = parameters$K_FOLDS, 
+    metric = "MSE",
+    xlabel = "Difference in RMSE", 
+    ylabel = paste0(
+        "Effect of ", tolower(COLUMN),
+        ", compared to '", loop_list[1], "'"),
+    group_species = TRUE,
+    species_names = parameters$Y_SPECIES))
+```
 :::
 
 ## Discussion of other results
-Looking at the other plots :
+Looking at the other plots:
 - Training size as a significant (all p-values < 0.001) effect on scores.
 - Number of new samples does not seem to have any significant effect (which is weird).
 - Number of explicative variables as an effect (all p-values < 0.001).

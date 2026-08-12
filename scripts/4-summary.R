@@ -27,7 +27,8 @@ param_grid <- build_param_grid(COMBINATIONS)
 ##### Helper functions ##### --------------------------------------------------
 cli_alert_warning(
     "[WARNING]: Reference values are *hard coded* in 'loop_selector'.")
-loop_selector <- function(grid, loop_on, base = parameters$BASE_COMBINATION){
+loop_selector <- function(
+        grid, loop_on, base = parameters$BASE_COMBINATION){
     # initialize base values
     combination <- list(
         train_size = base$TRAIN_SIZES,

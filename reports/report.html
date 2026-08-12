@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Loïc Lehnhoff">
-<meta name="dcterms.date" content="2026-08-10">
+<meta name="dcterms.date" content="2026-08-12">
 
 <title>BIODICAPT: Optimal Experimental Design</title>
 <style>
@@ -87,7 +87,7 @@ div.csl-indent {
   <ul class="collapse">
   <li><a href="#reference-results" id="toc-reference-results" class="nav-link" data-scroll-target="#reference-results">Reference results</a></li>
   <li><a href="#our-results" id="toc-our-results" class="nav-link" data-scroll-target="#our-results">Our results</a></li>
-  <li><a href="#discussion-of-comparison" id="toc-discussion-of-comparison" class="nav-link" data-scroll-target="#discussion-of-comparison">Discussion of comparison</a>
+  <li><a href="#interlude-discussion" id="toc-interlude-discussion" class="nav-link" data-scroll-target="#interlude-discussion">Interlude: discussion</a>
   <ul class="collapse">
   <li><a href="#what-can-we-see" id="toc-what-can-we-see" class="nav-link" data-scroll-target="#what-can-we-see">What can we see?</a></li>
   <li><a href="#what-to-conclude" id="toc-what-to-conclude" class="nav-link" data-scroll-target="#what-to-conclude">What to conclude?</a></li>
@@ -133,7 +133,7 @@ div.csl-indent {
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">2026-08-10</p>
+      <p class="date">2026-08-12</p>
     </div>
   </div>
   
@@ -149,9 +149,9 @@ div.csl-indent {
 <h1>Introduction</h1>
 <section id="oed" class="level2">
 <h2 class="anchored" data-anchor-id="oed">OED</h2>
-<p><strong>Optimal Experimental Design</strong> (or OED for short<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a>) is a method for designing experiments that aims at maximising information gain while minimising a cost function. This cost function can encompass uncertainty, cost, time… it is up to the user to select the parameters to optimise.</p>
+<p><strong>Optimal Experimental Design</strong> (or OED for short) is a method for designing experiments that aims at maximising information gain while minimising a cost function. This cost function can encompass uncertainty, cost, time… it is up to the user to select the parameters to optimise.</p>
 <p><mark>The key concept is that <strong>not all observations are equally informative</strong>.</mark></p>
-<p>This concept can be particularly interesting when working in participartory science, which is our case for the BIODICAPT project.</p>
+<p>This concept<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a> can be particularly interesting when working in participartory science, which is our case for the BIODICAPT project.</p>
 </section>
 <section id="biodicapt" class="level2">
 <h2 class="anchored" data-anchor-id="biodicapt">BIODICAPT</h2>
@@ -258,7 +258,7 @@ div.csl-indent {
 <tr class="odd">
 <td style="text-align: center;">Re-training strategy</td>
 <td style="text-align: center;">Re-sampling of 1%, 10% or 50% of dataset</td>
-<td style="text-align: center;">Addition of new samples</td>
+<td style="text-align: center;">Addition of new samples (50)</td>
 </tr>
 <tr class="even">
 <td style="text-align: center;">Training size</td>
@@ -278,14 +278,14 @@ div.csl-indent {
 <section id="our-results" class="level3">
 <h3 class="anchored" data-anchor-id="our-results">Our results</h3>
 <div class="tabset-margin-container"></div><div class="panel-tabset">
-<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-1-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-1" role="tab" aria-controls="tabset-1-1" aria-selected="true" href="">Boxplot differences</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-2" role="tab" aria-controls="tabset-1-2" aria-selected="false" href="">Dotwhisker differences</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-3-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-3" role="tab" aria-controls="tabset-1-3" aria-selected="false" href="">Boxplot improvement</a></li></ul>
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-1-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-1" role="tab" aria-controls="tabset-1-1" aria-selected="true" href="">Boxplot differences</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-2" role="tab" aria-controls="tabset-1-2" aria-selected="false" href="">Boxplot improvement</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-3-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-3" role="tab" aria-controls="tabset-1-3" aria-selected="false" href="">Dotwhisker differences</a></li></ul>
 <div class="tab-content">
 <div id="tabset-1-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-1-1-tab">
 <div class="cell">
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><embed src="report_files/figure-html/copy%20of%20fig3a-1.pdf" class="img-fluid" width="1056"></p>
+<p><img src="report_files/figure-html/copy%20of%20fig3a-1.png" class="img-fluid figure-img"></p>
 </figure>
 </div>
 </div>
@@ -296,7 +296,7 @@ div.csl-indent {
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><embed src="report_files/figure-html/copy%20of%20fig3a%20bis-1.pdf" class="img-fluid" width="1056"></p>
+<p><img src="report_files/figure-html/copy%20of%20fig3b-1.png" class="img-fluid figure-img"></p>
 </figure>
 </div>
 </div>
@@ -307,7 +307,7 @@ div.csl-indent {
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><embed src="report_files/figure-html/copy%20of%20fig3b-1.pdf" class="img-fluid" width="1056"></p>
+<p><img src="report_files/figure-html/copy%20of%20fig3a%20bis-1.png" class="img-fluid figure-img"></p>
 </figure>
 </div>
 </div>
@@ -317,18 +317,19 @@ div.csl-indent {
 </div>
 <p><em>BAU: Business-as-usual ; GF: Gap-filling ; SU: Simplified-uncertainty</em></p>
 </section>
-<section id="discussion-of-comparison" class="level3">
-<h3 class="anchored" data-anchor-id="discussion-of-comparison">Discussion of comparison</h3>
+<section id="interlude-discussion" class="level3">
+<h3 class="anchored" data-anchor-id="interlude-discussion">Interlude: discussion</h3>
 <section id="what-can-we-see" class="level4">
 <h4 class="anchored" data-anchor-id="what-can-we-see">What can we see?</h4>
-<p>Mondain-Monval et al. <span class="citation" data-cites="mondainmonval_adaptive_2024">[<a href="#ref-mondainmonval_adaptive_2024" role="doc-biblioref">4</a>]</span> show results in boxplots, for several proportion of their modified. We show results for the same addition of training points, but divided into train/val/test subsets.</p>
-<p>In our results, differences in MSE between resampling strategies are slight, less marked than those of <span class="citation" data-cites="mondainmonval_adaptive_2024">[<a href="#ref-mondainmonval_adaptive_2024" role="doc-biblioref">4</a>]</span>. However, we note that the “BAU” strategy yields to a more visible decrease in MSE (aka decrease of errors).</p>
-<p>It is also a surprise to note that the strategy “SU” does not yield to the best results (which was what we expected from <span class="citation" data-cites="mondainmonval_adaptive_2024">[<a href="#ref-mondainmonval_adaptive_2024" role="doc-biblioref">4</a>]</span>). When looking at the boxplots for the training scores of “SU”, an explanation could be that the model was confronted to much variability (compared other training subsets), which as a sligthly negative impact on predictions in test. This is actually quite logical: the “SU” strategy adds training samples for which the predictions of the model are the most uncertain, which is why variability is wider.</p>
+<p>Mondain-Monval et al. <span class="citation" data-cites="mondainmonval_adaptive_2024">[<a href="#ref-mondainmonval_adaptive_2024" role="doc-biblioref">4</a>]</span> and we computed the difference in MSE between a base strategy (business-as-usual) and other strategies. However, our training sets were not built in the same way : - Mondain-Monval et al. <span class="citation" data-cites="mondainmonval_adaptive_2024">[<a href="#ref-mondainmonval_adaptive_2024" role="doc-biblioref">4</a>]</span> <strong>changed a proportion of their training set</strong> (1%, 10%; 50%) according to the chosen strategy. - We ** added new samples to our training set** (50, with a base strategy of 125 samples) according to the chosen strategy.</p>
+<p>Our figures also show scores in train/val/test. We assume Mondain-Monval et al. <span class="citation" data-cites="mondainmonval_adaptive_2024">[<a href="#ref-mondainmonval_adaptive_2024" role="doc-biblioref">4</a>]</span> show only scores in test.</p>
+<p>In our results, differences in MSE between resampling strategies are slight, less marked than those of <span class="citation" data-cites="mondainmonval_adaptive_2024">[<a href="#ref-mondainmonval_adaptive_2024" role="doc-biblioref">4</a>]</span>. Statistical tests reveal that there is no significant differences in the test scores. What can be observed is that the “BAU” strategy yields to a more visible decrease in MSE (aka a decrease in errors). Interestingly, the “SU” strategy does not yield to the best results (which was what we expected from <span class="citation" data-cites="mondainmonval_adaptive_2024">[<a href="#ref-mondainmonval_adaptive_2024" role="doc-biblioref">4</a>]</span>).</p>
+<p>This is actually quite logical: the “SU” strategy adds training samples for which the predictions of the model are the most uncertain, which is why variability is wider in prediction.</p>
 </section>
 <section id="what-to-conclude" class="level4">
 <h4 class="anchored" data-anchor-id="what-to-conclude">What to conclude?</h4>
-<p>Subset comparisons confirm that training is harder with new unknown samples, but validation scores are better, as well as test scores. However, the differences with the base strategy is not statitically significant.</p>
-<p>Overall, the addition of new points in the sampling strategies has slight a positive effect on the predictions of the models on the test set. The best performing strategy on our practical dataset, using HMSC, seems to be “gap-filling” (GF).</p>
+<p>Subset comparisons confirm that training is harder with new unknown samples (training scores dropped), but test scores are better.</p>
+<p>Overall, the addition of new points in the sampling strategies has a slight positive effect on the predictions of the models on the test set. The best performing strategy on our practical dataset, using HMSC, seems to be “gap-filling” (GF). However, the differences are not statitically significant.</p>
 </section>
 </section>
 </section>
@@ -337,14 +338,14 @@ div.csl-indent {
 <section id="training-size" class="level3">
 <h3 class="anchored" data-anchor-id="training-size">Training size</h3>
 <div class="tabset-margin-container"></div><div class="panel-tabset">
-<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-2-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-1" role="tab" aria-controls="tabset-2-1" aria-selected="true" href="">Boxplot differences</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-2-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-2" role="tab" aria-controls="tabset-2-2" aria-selected="false" href="">Lineplot</a></li></ul>
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-2-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-1" role="tab" aria-controls="tabset-2-1" aria-selected="true" href="">Boxplot differences</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-2-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-2" role="tab" aria-controls="tabset-2-2" aria-selected="false" href="">Boxplot improvement</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-2-3-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-3" role="tab" aria-controls="tabset-2-3" aria-selected="false" href="">Lineplot</a></li></ul>
 <div class="tab-content">
 <div id="tabset-2-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-2-1-tab">
 <div class="cell">
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><embed src="report_files/figure-html/training_size_1-1.pdf" class="img-fluid" width="1056"></p>
+<p><img src="report_files/figure-html/training_size_1-1.png" class="img-fluid figure-img"></p>
 </figure>
 </div>
 </div>
@@ -355,7 +356,18 @@ div.csl-indent {
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><embed src="report_files/figure-html/training_size_2-1.pdf" class="img-fluid" width="1056"></p>
+<p><img src="report_files/figure-html/training_size_2-1.png" class="img-fluid figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<div id="tabset-2-3" class="tab-pane" role="tabpanel" aria-labelledby="tabset-2-3-tab">
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="report_files/figure-html/training_size_3-1.png" class="img-fluid figure-img"></p>
 </figure>
 </div>
 </div>
@@ -367,14 +379,14 @@ div.csl-indent {
 <section id="number-of-new-samples" class="level3">
 <h3 class="anchored" data-anchor-id="number-of-new-samples">Number of new samples</h3>
 <div class="tabset-margin-container"></div><div class="panel-tabset">
-<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-3-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-1" role="tab" aria-controls="tabset-3-1" aria-selected="true" href="">Boxplot differences</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-3-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-2" role="tab" aria-controls="tabset-3-2" aria-selected="false" href="">Lineplot</a></li></ul>
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-3-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-1" role="tab" aria-controls="tabset-3-1" aria-selected="true" href="">Boxplot differences</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-3-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-2" role="tab" aria-controls="tabset-3-2" aria-selected="false" href="">Boxplot improvement</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-3-3-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-3" role="tab" aria-controls="tabset-3-3" aria-selected="false" href="">Lineplot</a></li></ul>
 <div class="tab-content">
 <div id="tabset-3-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-3-1-tab">
 <div class="cell">
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><embed src="report_files/figure-html/new_samples_1-1.pdf" class="img-fluid" width="1056"></p>
+<p><img src="report_files/figure-html/new_samples_1-1.png" class="img-fluid figure-img"></p>
 </figure>
 </div>
 </div>
@@ -385,7 +397,18 @@ div.csl-indent {
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><embed src="report_files/figure-html/new_samples_2-1.pdf" class="img-fluid" width="1056"></p>
+<p><img src="report_files/figure-html/new_samples_2-1.png" class="img-fluid figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<div id="tabset-3-3" class="tab-pane" role="tabpanel" aria-labelledby="tabset-3-3-tab">
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="report_files/figure-html/new_samples_3-1.png" class="img-fluid figure-img"></p>
 </figure>
 </div>
 </div>
@@ -397,14 +420,14 @@ div.csl-indent {
 <section id="number-of-explicative-variables" class="level3">
 <h3 class="anchored" data-anchor-id="number-of-explicative-variables">Number of explicative variables</h3>
 <div class="tabset-margin-container"></div><div class="panel-tabset">
-<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-4-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-4-1" role="tab" aria-controls="tabset-4-1" aria-selected="true" href="">Boxplot differences</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-4-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-4-2" role="tab" aria-controls="tabset-4-2" aria-selected="false" href="">Lineplot</a></li></ul>
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-4-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-4-1" role="tab" aria-controls="tabset-4-1" aria-selected="true" href="">Boxplot differences</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-4-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-4-2" role="tab" aria-controls="tabset-4-2" aria-selected="false" href="">Boxplot improvement</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-4-3-tab" data-bs-toggle="tab" data-bs-target="#tabset-4-3" role="tab" aria-controls="tabset-4-3" aria-selected="false" href="">Lineplot</a></li></ul>
 <div class="tab-content">
 <div id="tabset-4-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-4-1-tab">
 <div class="cell">
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><embed src="report_files/figure-html/formulas_1-1.pdf" class="img-fluid" width="1056"></p>
+<p><img src="report_files/figure-html/formulas_1-1.png" class="img-fluid figure-img"></p>
 </figure>
 </div>
 </div>
@@ -415,7 +438,18 @@ div.csl-indent {
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><embed src="report_files/figure-html/formulas_2-1.pdf" class="img-fluid" width="1056"></p>
+<p><img src="report_files/figure-html/formulas_2-1.png" class="img-fluid figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<div id="tabset-4-3" class="tab-pane" role="tabpanel" aria-labelledby="tabset-4-3-tab">
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="report_files/figure-html/formulas_3-1.png" class="img-fluid figure-img"></p>
 </figure>
 </div>
 </div>
@@ -427,14 +461,14 @@ div.csl-indent {
 <section id="random-effect" class="level3">
 <h3 class="anchored" data-anchor-id="random-effect">Random Effect</h3>
 <div class="tabset-margin-container"></div><div class="panel-tabset">
-<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-5-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-1" role="tab" aria-controls="tabset-5-1" aria-selected="true" href="">Boxplot differences</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-5-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-2" role="tab" aria-controls="tabset-5-2" aria-selected="false" href="">Dotwhisker differences</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-5-3-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-3" role="tab" aria-controls="tabset-5-3" aria-selected="false" href="">Boxplot improvement</a></li></ul>
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-5-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-1" role="tab" aria-controls="tabset-5-1" aria-selected="true" href="">Boxplot differences</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-5-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-2" role="tab" aria-controls="tabset-5-2" aria-selected="false" href="">Boxplot improvement</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-5-3-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-3" role="tab" aria-controls="tabset-5-3" aria-selected="false" href="">Dotwhisker differences</a></li></ul>
 <div class="tab-content">
 <div id="tabset-5-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-5-1-tab">
 <div class="cell">
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><embed src="report_files/figure-html/r_effect_1-1.pdf" class="img-fluid" width="1056"></p>
+<p><img src="report_files/figure-html/r_effect_1-1.png" class="img-fluid figure-img"></p>
 </figure>
 </div>
 </div>
@@ -445,7 +479,7 @@ div.csl-indent {
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><embed src="report_files/figure-html/r_effect_2-1.pdf" class="img-fluid" width="1056"></p>
+<p><img src="report_files/figure-html/r_effect_2-1.png" class="img-fluid figure-img"></p>
 </figure>
 </div>
 </div>
@@ -456,7 +490,7 @@ div.csl-indent {
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><embed src="report_files/figure-html/r_effect_3-1.pdf" class="img-fluid" width="1056"></p>
+<p><img src="report_files/figure-html/r_effect_3-1.png" class="img-fluid figure-img"></p>
 </figure>
 </div>
 </div>
@@ -493,7 +527,7 @@ div.csl-indent {
 </div></section><section id="footnotes" class="footnotes footnotes-end-of-document" role="doc-endnotes"><h2 class="anchored quarto-appendix-heading">Footnotes</h2>
 
 <ol>
-<li id="fn1"><p>Sometimes, this concept is also referred to as “adaptive sampling”.<a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn1"><p>Sometimes, also referred to as “adaptive sampling”.<a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
 </ol>
 </section></div></main>
 <!-- /main column -->
