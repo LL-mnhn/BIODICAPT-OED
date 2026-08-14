@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Loïc Lehnhoff">
-<meta name="dcterms.date" content="2026-08-12">
+<meta name="dcterms.date" content="2026-08-14">
 
 <title>BIODICAPT: Optimal Experimental Design</title>
 <style>
@@ -87,11 +87,6 @@ div.csl-indent {
   <ul class="collapse">
   <li><a href="#reference-results" id="toc-reference-results" class="nav-link" data-scroll-target="#reference-results">Reference results</a></li>
   <li><a href="#our-results" id="toc-our-results" class="nav-link" data-scroll-target="#our-results">Our results</a></li>
-  <li><a href="#interlude-discussion" id="toc-interlude-discussion" class="nav-link" data-scroll-target="#interlude-discussion">Interlude: discussion</a>
-  <ul class="collapse">
-  <li><a href="#what-can-we-see" id="toc-what-can-we-see" class="nav-link" data-scroll-target="#what-can-we-see">What can we see?</a></li>
-  <li><a href="#what-to-conclude" id="toc-what-to-conclude" class="nav-link" data-scroll-target="#what-to-conclude">What to conclude?</a></li>
-  </ul></li>
   </ul></li>
   <li><a href="#other-results" id="toc-other-results" class="nav-link" data-scroll-target="#other-results">Other results</a>
   <ul class="collapse">
@@ -100,7 +95,7 @@ div.csl-indent {
   <li><a href="#number-of-explicative-variables" id="toc-number-of-explicative-variables" class="nav-link" data-scroll-target="#number-of-explicative-variables">Number of explicative variables</a></li>
   <li><a href="#random-effect" id="toc-random-effect" class="nav-link" data-scroll-target="#random-effect">Random Effect</a></li>
   </ul></li>
-  <li><a href="#discussion-of-other-results" id="toc-discussion-of-other-results" class="nav-link" data-scroll-target="#discussion-of-other-results">Discussion of other results</a></li>
+  <li><a href="#overall-discussion" id="toc-overall-discussion" class="nav-link" data-scroll-target="#overall-discussion">Overall discussion</a></li>
   </ul></li>
   </ul>
 <div class="quarto-alternate-formats"><h2>Other Formats</h2><ul><li><a href="../report.pdf"><i class="bi bi-file-pdf"></i>PDF</a></li></ul></div></nav>
@@ -133,7 +128,7 @@ div.csl-indent {
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">2026-08-12</p>
+      <p class="date">2026-08-14</p>
     </div>
   </div>
   
@@ -243,7 +238,7 @@ div.csl-indent {
 <tr class="even">
 <td style="text-align: center;">Number of species</td>
 <td style="text-align: center;">50 species</td>
-<td style="text-align: center;">5 species</td>
+<td style="text-align: center;">15 species</td>
 </tr>
 <tr class="odd">
 <td style="text-align: center;">Number of variables</td>
@@ -278,7 +273,7 @@ div.csl-indent {
 <section id="our-results" class="level3">
 <h3 class="anchored" data-anchor-id="our-results">Our results</h3>
 <div class="tabset-margin-container"></div><div class="panel-tabset">
-<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-1-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-1" role="tab" aria-controls="tabset-1-1" aria-selected="true" href="">Boxplot differences</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-2" role="tab" aria-controls="tabset-1-2" aria-selected="false" href="">Boxplot improvement</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-3-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-3" role="tab" aria-controls="tabset-1-3" aria-selected="false" href="">Dotwhisker differences</a></li></ul>
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-1-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-1" role="tab" aria-controls="tabset-1-1" aria-selected="true" href="">Boxplot differences</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-2" role="tab" aria-controls="tabset-1-2" aria-selected="false" href="">Boxplot improvement</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-3-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-3" role="tab" aria-controls="tabset-1-3" aria-selected="false" href="">Estimated effects</a></li></ul>
 <div class="tab-content">
 <div id="tabset-1-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-1-1-tab">
 <div class="cell">
@@ -316,21 +311,50 @@ div.csl-indent {
 </div>
 </div>
 <p><em>BAU: Business-as-usual ; GF: Gap-filling ; SU: Simplified-uncertainty</em></p>
-</section>
-<section id="interlude-discussion" class="level3">
-<h3 class="anchored" data-anchor-id="interlude-discussion">Interlude: discussion</h3>
-<section id="what-can-we-see" class="level4">
-<h4 class="anchored" data-anchor-id="what-can-we-see">What can we see?</h4>
-<p>Mondain-Monval et al. <span class="citation" data-cites="mondainmonval_adaptive_2024">[<a href="#ref-mondainmonval_adaptive_2024" role="doc-biblioref">4</a>]</span> and we computed the difference in MSE between a base strategy (business-as-usual) and other strategies. However, our training sets were not built in the same way : - Mondain-Monval et al. <span class="citation" data-cites="mondainmonval_adaptive_2024">[<a href="#ref-mondainmonval_adaptive_2024" role="doc-biblioref">4</a>]</span> <strong>changed a proportion of their training set</strong> (1%, 10%; 50%) according to the chosen strategy. - We ** added new samples to our training set** (50, with a base strategy of 125 samples) according to the chosen strategy.</p>
+<p><strong>Fitted model:</strong></p>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Linear mixed model fit by REML. t-tests use Satterthwaite's method [
+lmerModLmerTest]
+Formula: score ~ loop_element + (1 | k_fold) + (1 | species)
+   Data: subset(scores_df, dataset == subset)
+
+REML criterion at convergence: -3828.9
+
+Scaled residuals: 
+    Min      1Q  Median      3Q     Max 
+-2.9440 -0.6839 -0.0940  0.6801  3.2178 
+
+Random effects:
+ Groups   Name        Variance  Std.Dev.
+ species  (Intercept) 5.805e-03 0.076191
+ k_fold   (Intercept) 6.515e-06 0.002553
+ Residual             7.390e-05 0.008596
+Number of obs: 600, groups:  species, 15; k_fold, 10
+
+Fixed effects:
+                                     Estimate Std. Error         df t value
+(Intercept)                         1.332e-01  1.970e-02  1.407e+01   6.759
+loop_elementbusiness-as-usual      -1.774e-03  9.926e-04  5.730e+02  -1.788
+loop_elementgap-filling            -2.759e-03  9.926e-04  5.730e+02  -2.779
+loop_elementsimplified-uncertainty -2.238e-03  9.926e-04  5.730e+02  -2.255
+                                   Pr(&gt;|t|)    
+(Intercept)                        8.94e-06 ***
+loop_elementbusiness-as-usual       0.07436 .  
+loop_elementgap-filling             0.00563 ** 
+loop_elementsimplified-uncertainty  0.02452 *  
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
+</div>
+</div>
+<p><strong>Conclusions:</strong> This model shows that, when adding 50 new points to our training subsets, test scores then vary depending on the strategy chosen to add those points. “GF” and “SU” show significantly lower MSE in test, while “BAU” shows no detectable effect.</p>
+<p>Estimates are slightly better for “GF”, but remains comparable to “SU”.</p>
+<p>All three effect sizes (0.0018-0.0028 in MSE units) are also small relative to the residual noise floor (SD ≈ 0.0086) and an order of magnitude smaller than between-species variability (SD ≈ 0.076), which meaningful for model tuning, but not a large practical effect at this sample size.</p>
+<p><strong>Comparison with Mondain-Monval et al.:</strong></p>
+<p>Mondain-Monval et al. <span class="citation" data-cites="mondainmonval_adaptive_2024">[<a href="#ref-mondainmonval_adaptive_2024" role="doc-biblioref">4</a>]</span> and we computed the difference in MSE between a base strategy (business-as-usual) and other strategies. However, our training sets were not built in the same way: - Mondain-Monval et al. <span class="citation" data-cites="mondainmonval_adaptive_2024">[<a href="#ref-mondainmonval_adaptive_2024" role="doc-biblioref">4</a>]</span> <strong>changed a proportion of their training set</strong> (1%, 10%; 50%) according to the chosen strategy. - We <strong>added new samples to our training set</strong> (50, with a base strategy of 125 samples) according to the chosen strategy.</p>
 <p>Our figures also show scores in train/val/test. We assume Mondain-Monval et al. <span class="citation" data-cites="mondainmonval_adaptive_2024">[<a href="#ref-mondainmonval_adaptive_2024" role="doc-biblioref">4</a>]</span> show only scores in test.</p>
-<p>In our results, differences in MSE between resampling strategies are slight, less marked than those of <span class="citation" data-cites="mondainmonval_adaptive_2024">[<a href="#ref-mondainmonval_adaptive_2024" role="doc-biblioref">4</a>]</span>. Statistical tests reveal that there is no significant differences in the test scores. What can be observed is that the “BAU” strategy yields to a more visible decrease in MSE (aka a decrease in errors). Interestingly, the “SU” strategy does not yield to the best results (which was what we expected from <span class="citation" data-cites="mondainmonval_adaptive_2024">[<a href="#ref-mondainmonval_adaptive_2024" role="doc-biblioref">4</a>]</span>).</p>
+<p>In our results, differences in MSE between resampling strategies are slight, less marked than those of <span class="citation" data-cites="mondainmonval_adaptive_2024">[<a href="#ref-mondainmonval_adaptive_2024" role="doc-biblioref">4</a>]</span>. Statistical tests reveal that there are significant differences in the test scores compared to no resampling. Interestingly, the “SU” strategy does not clearly yields to the best results (which was what we expected from <span class="citation" data-cites="mondainmonval_adaptive_2024">[<a href="#ref-mondainmonval_adaptive_2024" role="doc-biblioref">4</a>]</span>).</p>
 <p>This is actually quite logical: the “SU” strategy adds training samples for which the predictions of the model are the most uncertain, which is why variability is wider in prediction.</p>
-</section>
-<section id="what-to-conclude" class="level4">
-<h4 class="anchored" data-anchor-id="what-to-conclude">What to conclude?</h4>
-<p>Subset comparisons confirm that training is harder with new unknown samples (training scores dropped), but test scores are better.</p>
-<p>Overall, the addition of new points in the sampling strategies has a slight positive effect on the predictions of the models on the test set. The best performing strategy on our practical dataset, using HMSC, seems to be “gap-filling” (GF). However, the differences are not statitically significant.</p>
-</section>
 </section>
 </section>
 <section id="other-results" class="level2">
@@ -338,7 +362,7 @@ div.csl-indent {
 <section id="training-size" class="level3">
 <h3 class="anchored" data-anchor-id="training-size">Training size</h3>
 <div class="tabset-margin-container"></div><div class="panel-tabset">
-<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-2-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-1" role="tab" aria-controls="tabset-2-1" aria-selected="true" href="">Boxplot differences</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-2-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-2" role="tab" aria-controls="tabset-2-2" aria-selected="false" href="">Boxplot improvement</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-2-3-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-3" role="tab" aria-controls="tabset-2-3" aria-selected="false" href="">Lineplot</a></li></ul>
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-2-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-1" role="tab" aria-controls="tabset-2-1" aria-selected="true" href="">Boxplot differences</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-2-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-2" role="tab" aria-controls="tabset-2-2" aria-selected="false" href="">Boxplot improvement</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-2-3-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-3" role="tab" aria-controls="tabset-2-3" aria-selected="false" href="">Estimated effects</a></li></ul>
 <div class="tab-content">
 <div id="tabset-2-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-2-1-tab">
 <div class="cell">
@@ -375,11 +399,43 @@ div.csl-indent {
 </div>
 </div>
 </div>
+<p><strong>Fitted model:</strong></p>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Linear mixed model fit by REML. t-tests use Satterthwaite's method [
+lmerModLmerTest]
+Formula: score ~ loop_element + (1 | k_fold) + (1 | species)
+   Data: subset(scores_df, dataset == subset)
+
+REML criterion at convergence: -4051.2
+
+Scaled residuals: 
+    Min      1Q  Median      3Q     Max 
+-2.4577 -0.6113 -0.0967  0.3963  7.4803 
+
+Random effects:
+ Groups   Name        Variance  Std.Dev.
+ species  (Intercept) 0.0067913 0.08241 
+ k_fold   (Intercept) 0.0000308 0.00555 
+ Residual             0.0005568 0.02360 
+Number of obs: 900, groups:  species, 15; k_fold, 10
+
+Fixed effects:
+               Estimate Std. Error         df t value Pr(&gt;|t|)    
+(Intercept)   1.776e-01  2.140e-02  1.430e+01   8.298  7.7e-07 ***
+loop_element -4.153e-04  2.003e-05  8.750e+02 -20.732  &lt; 2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
+</div>
+</div>
+<p><strong>Conclusions:</strong></p>
+<p>Increasing training size produces a strong, highly significant (p &lt;&lt;&lt; 0.01), and meaningful reduction in test MSE.</p>
+<p>Over 100 samples, this effect is comparable in magnitude to the variance explained by species groups.</p>
 </section>
 <section id="number-of-new-samples" class="level3">
 <h3 class="anchored" data-anchor-id="number-of-new-samples">Number of new samples</h3>
 <div class="tabset-margin-container"></div><div class="panel-tabset">
-<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-3-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-1" role="tab" aria-controls="tabset-3-1" aria-selected="true" href="">Boxplot differences</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-3-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-2" role="tab" aria-controls="tabset-3-2" aria-selected="false" href="">Boxplot improvement</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-3-3-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-3" role="tab" aria-controls="tabset-3-3" aria-selected="false" href="">Lineplot</a></li></ul>
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-3-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-1" role="tab" aria-controls="tabset-3-1" aria-selected="true" href="">Boxplot differences</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-3-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-2" role="tab" aria-controls="tabset-3-2" aria-selected="false" href="">Boxplot improvement</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-3-3-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-3" role="tab" aria-controls="tabset-3-3" aria-selected="false" href="">Estimated effects</a></li></ul>
 <div class="tab-content">
 <div id="tabset-3-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-3-1-tab">
 <div class="cell">
@@ -416,11 +472,41 @@ div.csl-indent {
 </div>
 </div>
 </div>
+<p><strong>Fitted model:</strong></p>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Linear mixed model fit by REML. t-tests use Satterthwaite's method [
+lmerModLmerTest]
+Formula: score ~ loop_element + (1 | k_fold) + (1 | species)
+   Data: subset(scores_df, dataset == subset)
+
+REML criterion at convergence: -5858.7
+
+Scaled residuals: 
+    Min      1Q  Median      3Q     Max 
+-3.1349 -0.6778 -0.0740  0.6209  3.3249 
+
+Random effects:
+ Groups   Name        Variance  Std.Dev.
+ species  (Intercept) 5.818e-03 0.076273
+ k_fold   (Intercept) 5.929e-06 0.002435
+ Residual             7.194e-05 0.008482
+Number of obs: 900, groups:  species, 15; k_fold, 10
+
+Fixed effects:
+               Estimate Std. Error         df t value Pr(&gt;|t|)    
+(Intercept)   1.326e-01  1.971e-02  1.405e+01   6.728 9.50e-06 ***
+loop_element -2.727e-05  5.308e-06  8.750e+02  -5.137 3.44e-07 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
+</div>
+</div>
+<p><strong>Conclusions:</strong> Similarly to training size, the effect is statistically significant (p &lt;&lt;&lt; 0.01) but small in intensity.</p>
 </section>
 <section id="number-of-explicative-variables" class="level3">
 <h3 class="anchored" data-anchor-id="number-of-explicative-variables">Number of explicative variables</h3>
 <div class="tabset-margin-container"></div><div class="panel-tabset">
-<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-4-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-4-1" role="tab" aria-controls="tabset-4-1" aria-selected="true" href="">Boxplot differences</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-4-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-4-2" role="tab" aria-controls="tabset-4-2" aria-selected="false" href="">Boxplot improvement</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-4-3-tab" data-bs-toggle="tab" data-bs-target="#tabset-4-3" role="tab" aria-controls="tabset-4-3" aria-selected="false" href="">Lineplot</a></li></ul>
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-4-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-4-1" role="tab" aria-controls="tabset-4-1" aria-selected="true" href="">Boxplot differences</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-4-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-4-2" role="tab" aria-controls="tabset-4-2" aria-selected="false" href="">Boxplot improvement</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-4-3-tab" data-bs-toggle="tab" data-bs-target="#tabset-4-3" role="tab" aria-controls="tabset-4-3" aria-selected="false" href="">Estimated effects</a></li></ul>
 <div class="tab-content">
 <div id="tabset-4-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-4-1-tab">
 <div class="cell">
@@ -457,11 +543,41 @@ div.csl-indent {
 </div>
 </div>
 </div>
+<p><strong>Fitted model:</strong></p>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Linear mixed model fit by REML. t-tests use Satterthwaite's method [
+lmerModLmerTest]
+Formula: score ~ loop_element + (1 | k_fold) + (1 | species)
+   Data: subset(scores_df, dataset == subset)
+
+REML criterion at convergence: -2798.6
+
+Scaled residuals: 
+     Min       1Q   Median       3Q      Max 
+-2.69189 -0.72287 -0.07612  0.68723  3.02859 
+
+Random effects:
+ Groups   Name        Variance  Std.Dev.
+ species  (Intercept) 6.180e-03 0.078613
+ k_fold   (Intercept) 6.188e-06 0.002488
+ Residual             8.403e-05 0.009167
+Number of obs: 450, groups:  species, 15; k_fold, 10
+
+Fixed effects:
+               Estimate Std. Error         df t value Pr(&gt;|t|)    
+(Intercept)   1.361e-01  2.034e-02  1.410e+01   6.691 9.89e-06 ***
+loop_element -5.045e-04  2.542e-04  4.250e+02  -1.984   0.0479 *  
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
+</div>
+</div>
+<p><strong>Conclusions:</strong> There is weak evidence (p ≈ 0.05) that adding explicative variables reduces test MSE: there are only 3 points, which are not necessarily linearly distributed.</p>
 </section>
 <section id="random-effect" class="level3">
 <h3 class="anchored" data-anchor-id="random-effect">Random Effect</h3>
 <div class="tabset-margin-container"></div><div class="panel-tabset">
-<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-5-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-1" role="tab" aria-controls="tabset-5-1" aria-selected="true" href="">Boxplot differences</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-5-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-2" role="tab" aria-controls="tabset-5-2" aria-selected="false" href="">Boxplot improvement</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-5-3-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-3" role="tab" aria-controls="tabset-5-3" aria-selected="false" href="">Dotwhisker differences</a></li></ul>
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-5-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-1" role="tab" aria-controls="tabset-5-1" aria-selected="true" href="">Boxplot differences</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-5-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-2" role="tab" aria-controls="tabset-5-2" aria-selected="false" href="">Boxplot improvement</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-5-3-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-3" role="tab" aria-controls="tabset-5-3" aria-selected="false" href="">Estimated effects</a></li></ul>
 <div class="tab-content">
 <div id="tabset-5-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-5-1-tab">
 <div class="cell">
@@ -498,13 +614,50 @@ div.csl-indent {
 </div>
 </div>
 </div>
+<p><strong>Fitted model:</strong></p>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Linear mixed model fit by REML. t-tests use Satterthwaite's method [
+lmerModLmerTest]
+Formula: score ~ loop_element + (1 | k_fold) + (1 | species)
+   Data: subset(scores_df, dataset == subset)
+
+REML criterion at convergence: -1814.1
+
+Scaled residuals: 
+    Min      1Q  Median      3Q     Max 
+-2.7073 -0.6877 -0.1210  0.7215  2.6191 
+
+Random effects:
+ Groups   Name        Variance  Std.Dev.
+ species  (Intercept) 5.865e-03 0.076583
+ k_fold   (Intercept) 6.392e-06 0.002528
+ Residual             8.858e-05 0.009412
+Number of obs: 300, groups:  species, 15; k_fold, 10
+
+Fixed effects:
+                    Estimate Std. Error         df t value Pr(&gt;|t|)    
+(Intercept)        1.332e-01  1.980e-02  1.407e+01   6.723 9.49e-06 ***
+loop_elementunits -1.658e-04  1.087e-03  2.750e+02  -0.153    0.879    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
+</div>
+</div>
+<p><strong>Conclusions:</strong> No significant difference in test MSE when the species random intercept is included vs.&nbsp;excluded (p &gt; 0.5), despite a visible improvement in training fit.</p>
+<p>This is a <em>textbook</em> signature of the random effect absorbing training-set noise without improving generalisation, which is expected between test units are very different, and not overlapping with training units. Surely a “distance” random effect would be more impactful.</p>
 </section>
 </section>
-<section id="discussion-of-other-results" class="level2">
-<h2 class="anchored" data-anchor-id="discussion-of-other-results">Discussion of other results</h2>
-<p>Looking at the other plots : - Training size as a significant (all p-values &lt; 0.001) effect on scores. - Number of new samples does not seem to have any significant effect (which is weird). - Number of explicative variables as an effect (all p-values &lt; 0.001). - Adding a random effect to HMSC yields to better scores in training but no differences in val or test.</p>
-<p>Overall, the larger the number of training samples, explicative variables and/or new samples, the better the model performs in val/test, and the worst it performs in training. Although the effects are small, they are comparable to the ones of <span class="citation" data-cites="mondainmonval_adaptive_2024">[<a href="#ref-mondainmonval_adaptive_2024" role="doc-biblioref">4</a>]</span>, and our results show that this as an impact on predictions (improvements by &gt;1% increases).</p>
-<p><em>Results “per species” are available but not discussed in this report, see PDF files in <code>outputs/figures/STOC-OED/</code></em></p>
+<section id="overall-discussion" class="level2">
+<h2 class="anchored" data-anchor-id="overall-discussion">Overall discussion</h2>
+<p>Five predictors were tested independently, one at a time, each in its own mixed model. To summarise the results:</p>
+<ul>
+<li>Training size has a positive effect on test performance. This is the strongest and most of this report .</li>
+<li>Sampling strategy: “GF” and “SU” perform significantly better than no resampling strategy.</li>
+<li>Number of new samples (independent of overall training size) and number of explicative variables both show statistically detectable but modest effects in practice.</li>
+<li>Explicit species random effects should consider distance between points instead of units, which has no impact.</li>
+</ul>
+<p>Species random effect is high. As our aim is to generalise the predictions beyond the 15 species used here, this is fine, but it should be kept in mind that these results are highly species-dependant. K-folds random effects are negligible, which is expected and good thing, meaning that the partitioning of the dataset has little to no effect on scores.</p>
+<p>Overall, increasing the number of training samples is the dominant lever for improving HMSC model performance, with returns flattening beyond roughly 100 sampled plots. However, this is only true for an initial random sampling of the STOC dataset, what if the initial sampled agricultural plots were not randomly chosen ? (i.e.&nbsp;in BIODICAPT, some explicative variables could be over-represented, which would skew the distributions). We’ll have to change the dataset to see that!</p>
 <div style="page-break-after: always;"></div>
 
 </section>

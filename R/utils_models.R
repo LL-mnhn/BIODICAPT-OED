@@ -2,6 +2,7 @@
 ##### Libraries ##### ---------------------------------------------------------
 library(broom.mixed)
 library(dotwhisker)
+library(ggeffects)
 library(ggpmisc)
 library(ggplot2)
 library(dplyr)
@@ -11,6 +12,9 @@ library(readr)
 library(Hmsc)
 library(cli)
 library(sf)
+
+library(lme4)
+library(lmerTest)
 
 
 ##### Parameters ##### --------------------------------------------------------
@@ -143,13 +147,13 @@ prepare_hmsc_training <- function(
 #       Removes verbose messages during fitting.
 fitting_hmsc <- function(
     hM, 
-    save_to,
     nchains,
     thin,
     nsamples,
     ntransient,
     freq_verbose = 100,
-    allow_parallel = TRUE) {
+    allow_parallel = TRUE,
+    save_to = NULL) {
     # Fit model
     start <- Sys.time()
     cli_alert_info(paste0("Started fitting at: ", start))
@@ -178,9 +182,11 @@ fitting_hmsc <- function(
     cli_alert_info(paste0("Time elapsed: ", round(stop-start, 2)))
 
     # Save run 
-    cli_alert_info("Saving model...")
-    saveRDS(fitted.hmsc, file = save_to)
-    cli_alert_success("Model saved!\n\n")
+    if (!is.null(save_to)) {
+        cli_alert_info("Saving model...")
+        saveRDS(fitted.hmsc, file = save_to)
+        cli_alert_success("Model saved!\n\n")    
+    }
     return(fitted.hmsc)
 }
 
@@ -253,16 +259,16 @@ convergence_hmsc <- function(hM, nchains, thin, save_folder) {
         eff_size <- effectiveSize(chains)
         eff_size_plot <- ggplot_bars(
                 as.data.frame(eff_size), "eff_size", 
-                breaks = ceiling(c(0, seq(400, max(eff_size), length.out = 19))),
+                breaks = ceiling(c(0, seq(100, max(eff_size), length.out = 19))),
                 underlayers = list(
                     bad = annotate("rect", 
-                        xmin = -Inf, xmax = 400, ymin = -Inf, ymax = Inf,
+                        xmin = -Inf, xmax = 100, ymin = -Inf, ymax = Inf,
                         fill = PALETTE[1], alpha = 0.5),
                     acceptable = annotate("rect", 
-                        xmin = 400, xmax = 1000, ymin = -Inf, ymax = Inf,
+                        xmin = 100, xmax = 400, ymin = -Inf, ymax = Inf,
                         fill = PALETTE[5], alpha = 0.5),
                     good = annotate("rect", 
-                        xmin = 1000, xmax = Inf, ymin = -Inf, ymax = Inf,
+                        xmin = 400, xmax = Inf, ymin = -Inf, ymax = Inf,
                         fill = PALETTE[2], alpha = 0.5),
                     captions = labs(caption = "Green: good, Orange: acceptable, Red: bad."))
                 )
@@ -747,7 +753,7 @@ abbreviate_loop_labels <- function(x) {
 #   - save_to: a string. A path which should end with .pdf. 
 #       If NULL, does not save pdf.
 #   - what: a string. Type of success in message.
-finalize_plot <- function(p, save_to, what = "performances") {
+finalize_plot <- function(p, what = "performances", save_to = NULL) {
     print(p)
     if (!is.null(save_to)) {
         standardised_ggplot_save(figure = p, save_path = save_to)
@@ -761,7 +767,9 @@ finalize_plot <- function(p, save_to, what = "performances") {
 # ARGS:
 #   - run_path: a string. Path to parent folder of `{subset_name}_scores.csv`.
 #   - subset_name: a string. Name of the subset in `{subset_name}_scores.csv`.
-#   - metric: a string. Metric to extract from file (MSE, RMSE, AUC or TjuR2).
+#   - metric: a string. Metric to extract from file (MSE, RMSE, AUC or TjuR2). 
+#       Default is NULL (output all dataframe). 
+#       If a metric is given, outputs only the column of that metric.
 load_metric_scores <- function(run_path, subset_name, metric) {
     # SECURITY : run logical check before importation of scores
     pattern_strategy <- "strategy-([^_]+)_new"
@@ -797,11 +805,13 @@ load_metric_scores <- function(run_path, subset_name, metric) {
 
     file_path <- file.path(run_path, paste0(subset_name, "_scores.csv"))
     df <- read_csv(file_path, show_col_types = FALSE)
+
+    # add MSE
+    df$MSE <- df$RMSE^2
+
     if (is.null(metric)) {
         df
-    } else if (metric == "MSE") {
-        df$RMSE^2
-    } else if (metric %in% c("RMSE", "AUC", "TjurR2")) {
+    } else if (metric %in% c("MSE", "RMSE", "AUC", "TjurR2")) {
         df[[metric]]
     } else {
         stop(paste0("Metric '", metric, "' is not handled by this function."))
@@ -989,7 +999,7 @@ compute_score_diffs <- function(
             mutate(species = factor(species, levels = species_names))
     }
 
-    list(summary = scores_df, raw_diffs = raw_diffs_df)
+    list(summary = scores_df, raw_diffs = raw_diffs_df, ref = ref_scores)
 }
 
 # A function that computes the number of species that reached a certain
@@ -1093,8 +1103,6 @@ compute_number_of_improvements <- function(
 # ARGS:
 #   - parent_folder: a string. 
 #       Path to parent of subfolders containing `{subset_name}_scores.csv`.
-#   - save_to: a string. Path which should end with .pdf. 
-#       If NULL, does not save pdf.
 #   - loop_prefix: a string. The prefix of the subfolders names.
 #   - loop_elements: a list of strings. Middle elements for subfolders names.
 #   - loop_suffix: a string. The suffix of the subfolders names.
@@ -1108,10 +1116,11 @@ compute_number_of_improvements <- function(
 #   - species_names: names of species in CSV 
 #       (rownames are not available from csvs).
 #   - barplot: makes a barplot (TRUE, default) or a pointplot (FALSE).
-#   - add_stats: a boolean. If TRUE, computes lm model for lineplots.
+#   - subset_names: a list string. Usually c("train", "val", "test").
+#   - save_to: a string. Path which should end with .pdf. 
+#       If NULL, does not save pdf.
 barplot_raw_scores <- function(
         parent_folder,
-        save_to,
         loop_prefix,
         loop_elements,
         loop_suffix,
@@ -1121,8 +1130,8 @@ barplot_raw_scores <- function(
         group_species = TRUE,
         species_names = NULL,
         barplot = TRUE,
-        add_stats = FALSE,
-        subset_names = c("train", "val", "test")) {
+        subset_names = c("train", "val", "test"),
+        save_to = NULL) {
 
     cli_alert_info("Fetching scores...")
     scores_df <- data.frame()
@@ -1151,11 +1160,14 @@ barplot_raw_scores <- function(
     }
 
     ### Aggregate
-    group_cols <- if (group_species) {
-        c("metric", "loop_element", "dataset")
+    if (group_species) {
+        group_cols <- c("metric", "loop_element", "dataset")
     } else {
-        c("metric", "loop_element", "dataset", "species")
+        group_cols <- c("metric", "loop_element", "dataset", "species")
+        scores_df <- scores_df |> 
+            mutate(species = factor(species, levels = species_names))
     }
+
     aggregated_df <- scores_df |>
         group_by(across(all_of(group_cols))) |>
         summarise(
@@ -1193,40 +1205,35 @@ barplot_raw_scores <- function(
             geom_ribbon(alpha = 0.33, aes(fill = dataset)) +
             geom_point(size = 1, aes(color = dataset)) +
             geom_line(aes(color = dataset))
-
-        if (add_stats) {
-            p <- p + stat_fit_glance(
-                data = scores_df,
-                mapping = aes(
-                    x = loop_element, 
-                    y = score, 
-                    color = dataset,
-                    label = after_stat(
-                        paste0(
-                            "~~italic(p)~`=`~", "\"", 
-                            formatC(p.value, format = "e", digits = 1), "\""))
-                ),
-                na.rm = TRUE,
-                inherit.aes = FALSE,
-                method = "lm",
-                method.args = list(formula = y ~ log1p(x)),
-                geom = "text_npc",
-                parse = TRUE,
-                label.x = "left",
-                label.y = "top",
-                vstep = 0.1
-            )
-        }
-
     }
 
-    p <- p + 
-        labs(caption = "SD and mean computed per k_fold (over all species)")
+    if (group_species) {
+        bottom_caption <- paste(
+            "SD and mean computed per k_fold",
+            "(species-averaged within each fold, across k_fold).")
+    } else {
+        bottom_caption <- paste(
+            "SD and mean computed per k_fold across k_fold, per species.")
+    }
 
-    p <- if (group_species) {
-            p + facet_wrap(~ metric) 
+    format_prefix <- sub("n-variables", "n variables", sub("training-size", "training size", sub("new-samples", "new samples", loop_prefix)))
+    format_prefix <- paste(sub("-", "=", strsplit(substring(format_prefix, 7, nchar(format_prefix)-1), "_")[[1]], fixed = TRUE), collapse = ", ")
+
+
+    format_suffix <- sub("n-variables", "n variables", sub("training-size", "training size", sub("new-samples", "new samples", loop_suffix)))
+    format_suffix <- paste(sub("-", "=", strsplit(substring(format_suffix, 1, nchar(format_suffix)-2), "_")[[1]], fixed = TRUE), collapse = ", ")
+
+    bottom_caption <- paste0(
+        bottom_caption,
+        "\nModel type: ", format_prefix,": x-value", format_suffix, ".")
+
+    p <- p + 
+        labs(caption = bottom_caption)
+
+    if (group_species) {
+            p <- p + facet_wrap(~ metric) 
         } else {
-            p + facet_grid(metric ~ species, scales = "free_x")
+            p <- p + facet_grid(metric ~ species, scales = "free_x")
         }
     
     p <- my_custom_ggplot_theme(p) + 
@@ -1239,7 +1246,7 @@ barplot_raw_scores <- function(
         p <- p + scale_x_discrete(labels = abbreviate_loop_labels)
 
     finalize_plot(p, save_to, what = "performances")
-    return(aggregated_df)
+    return(list(plot = p))
 }
 
 # A function to compare scores between k_folds, subset and model type.
@@ -1249,8 +1256,6 @@ barplot_raw_scores <- function(
 #   - reference_model_path: a string. 
 #       Path to a folder containing of a reference model
 #       (parent_folder goes before, k_fold number goes at the end).
-#   - save_to: a string. Path which should end with .pdf. 
-#       If NULL, does not save pdf.
 #   - loop_prefix: a string. The prefix of the subfolders names.
 #   - loop_elements: a list of strings. Middle elements for subfolders names.
 #   - loop_suffix: a string. The suffix of the subfolders names.
@@ -1264,10 +1269,11 @@ barplot_raw_scores <- function(
 #       only accross k_folds (FALSE).
 #   - species_names: names of species in CSV 
 #       (rownames are not available from csvs).
+#   - save_to: a string. Path which should end with .pdf. 
+#       If NULL, does not save pdf.
 boxplot_compare_scores <- function(
         parent_folder,
         reference_model_path,
-        save_to,
         loop_prefix,
         loop_elements,
         loop_suffix,
@@ -1276,7 +1282,8 @@ boxplot_compare_scores <- function(
         subset_names = c("train", "val", "test"),
         xlabel = "Effect",
         group_species = TRUE,
-        species_names = NULL) {
+        species_names = NULL,
+        save_to = NULL) {
 
     diffs <- compute_score_diffs(
         parent_folder, reference_model_path, loop_prefix, loop_elements,
@@ -1285,14 +1292,67 @@ boxplot_compare_scores <- function(
     scores_df <- diffs$summary
     raw_diffs_df <- diffs$raw_diffs
 
-    bottom_caption <- if (group_species) {
-        paste(
-            "Distribution of per-fold differences",
-        "(species-averaged within each fold, across k_fold)")
+    # load reference values
+    refs_list <- list()
+    for (subset_name in subset_names) {
+        for (k in 1:k_fold) {
+            run_path <- file.path(
+            parent_folder, paste0(reference_model_path, k))
+            refs <- load_metric_scores(run_path, subset_name, metric)
+
+            refs_list[[length(refs_list) + 1]] <- data.frame(
+                subset = subset_name,
+                k_fold = k,
+                scores = refs,
+                species = species_names,
+                stringsAsFactors = FALSE
+            )
+        }
+    }
+    refs_df <- bind_rows(refs_list)
+    if (group_species) {
+        mean_refs_df <- refs_df |>
+            group_by(subset) |>
+            summarise(mean_score = mean(scores, na.rm = TRUE), .groups = "drop")
     } else {
-        "Distribution of per-fold differences across k_fold, per species"
+        mean_refs_df <- refs_df |>
+            group_by(subset, species) |>
+            summarise(mean_score = mean(scores, na.rm = TRUE), .groups = "drop")
     }
 
+
+    # just to be sure
+    if (!group_species) {
+        scores_df <- scores_df |> 
+            mutate(species = factor(species, levels = species_names))
+        raw_diffs_df <- raw_diffs_df |> 
+            mutate(species = factor(species, levels = species_names))
+    }
+
+    if (group_species) {
+        bottom_caption <- paste(
+            "Distribution of per-fold differences",
+            "(species-averaged within each fold, across k_fold).")
+    } else {
+        bottom_caption <- paste(
+            "Distribution of per-fold differences across k_fold, per species.")
+    }
+
+    format_reference_path <- sub("n-variables", "n variables", sub("training-size", "training size", sub("new-samples", "new samples", reference_model_path)))
+    format_reference_path <- paste(sub("-", "=", strsplit(substring(format_reference_path, 7, nchar(format_reference_path)-2), "_")[[1]], fixed = TRUE), collapse = ", ")
+
+    format_prefix <- sub("n-variables", "n variables", sub("training-size", "training size", sub("new-samples", "new samples", loop_prefix)))
+    format_prefix <- paste(sub("-", "=", strsplit(substring(format_prefix, 7, nchar(format_prefix)-1), "_")[[1]], fixed = TRUE), collapse = ", ")
+
+
+    format_suffix <- sub("n-variables", "n variables", sub("training-size", "training size", sub("new-samples", "new samples", loop_suffix)))
+    format_suffix <- paste(sub("-", "=", strsplit(substring(format_suffix, 1, nchar(format_suffix)-2), "_")[[1]], fixed = TRUE), collapse = ", ")
+
+    bottom_caption <- paste0(
+        bottom_caption,
+        "\nReference: ", format_reference_path, 
+        ".\nCompared with: ", format_prefix,": x-value", format_suffix, ".")
+    
     p <- ggplot(
             raw_diffs_df, 
             aes(y = diff_value, x = loop_element, fill = subset)) +
@@ -1305,6 +1365,25 @@ boxplot_compare_scores <- function(
         xlab(xlabel) +
         geom_hline(yintercept = 0, linetype = "dashed")
 
+    # add text for mean reference
+    if (group_species) {
+        ref_values <- paste0(mean_refs_df |> 
+            mutate(subset = factor(subset, levels = subset_names)) |>
+            arrange(subset) |>
+            mutate(label = paste0(subset, ": ", round(mean_score, 3))) |>
+            pull(label), collapse=", ")
+
+        p <- p + annotation_custom(
+            grob = grid::textGrob(
+                paste0("Reference scores: ", ref_values, "."),
+                x = unit(0, "npc"), y = unit(0, "npc"),
+                hjust = -0.02, vjust = -0.75,
+                gp = grid::gpar(
+                    fontsize = 9, fontface = "italic", lineheight = 0.8)
+            )
+        )
+    }
+
     if (!group_species) p <- p + facet_wrap(~species, nrow = 1)
 
     p <- my_custom_ggplot_theme(p)  +
@@ -1316,144 +1395,7 @@ boxplot_compare_scores <- function(
     }
 
     finalize_plot(p, save_to, what = "data")
-    return(list(summary = scores_df, raw_diffs = raw_diffs_df))
-}
-
-# A function to compare scores statistically.
-# ARGS:
-#   - parent_folder: a string. 
-#       Path to parent of subfolders containing `{subset_name}_scores.csv`.
-#   - reference_model_path: a string. 
-#       Path to a folder containing of a reference model
-#       (parent_folder goes before, k_fold number goes at the end).
-#   - save_to: a string. Path which should end with .pdf. 
-#       If NULL, does not save pdf.
-#   - loop_prefix: a string. The prefix of the subfolders names.
-#   - loop_elements: a list of strings. Middle elements for subfolders names.
-#   - loop_suffix: a string. The suffix of the subfolders names.
-#   - k_fold: a numeric. The number of cross-validation subsets to make. 
-#       Goes after suffix and reference_model_path .
-#   - metric: a string. Metric to extract from file (MSE, RMSE, AUC or TjuR2).
-#   - subset_names: a list string. Usually c("train", "val", "test").
-#   - xlabel: a string. The xlabel for the plot (default is "Model type").
-#   - ylabel: a string. The ylabel for the plot (default is "Average Score").
-#   - group_species: whether to take the mean 
-#       accross all k_folds and species (TRUE, default) or 
-#       only accross k_folds (FALSE).
-#   - species_names: names of species in CSV 
-#       (rownames are not available from csvs).
-dotwhisker_model_scores <- function(
-        parent_folder,
-        reference_model_path,
-        save_to,
-        loop_prefix,
-        loop_elements,
-        loop_suffix,
-        k_fold,
-        metric = "MSE",
-        subset_names = c("train", "val", "test"),
-        xlabel = "Value",
-        ylabel = "Effect",
-        group_species = TRUE,
-        species_names = NULL) {
-
-    if (is.numeric(loop_elements)) {
-        stop(paste0(
-            "This function was not made to handle numerics in 'loop_elements'",
-            ". Try barplot_raw_scores() with` barplot = FALSE` instead."))
-    }
-    
-    cli_alert_info("Fetching scores...")
-    scores_df <- data.frame()
-    for (k in seq(k_fold)) {
-        for (element in loop_elements) {
-            run_path <- file.path(
-                parent_folder, paste0(loop_prefix, element, loop_suffix, k))
-
-            for (subset_name in subset_names) {
-                local_csv <- load_metric_scores(
-                    run_path, subset_name, metric = NULL)
-                subset_scores <- local_csv |>
-                    mutate(species = species_names) |>
-                    pivot_longer(
-                        cols = c(RMSE, AUC, TjurR2),
-                        names_to = "metric", values_to = "score") |>
-                    mutate(
-                        loop_element = element, 
-                        k_fold = k, 
-                        dataset = subset_name)
-
-                scores_df <- rbind(scores_df, subset_scores)
-            }
-        }
-    }
-
-    # One pooled "group" if group_species, otherwise one group per species
-    species_groups <- if (group_species) {
-            list("All") 
-        } else {
-            as.list(unique(scores_df$species))
-        }
-
-    list_fits <- list()
-    tidy_all <- data.frame()
-
-    for (sp in species_groups) {
-
-        sp_scores <- scores_df |> filter(metric == "RMSE")
-        if (!group_species) sp_scores <- sp_scores |> filter(species == sp)
-
-        fits_sp <- list()
-        for (s in seq_along(subset_names)) {
-            filtered_df <- sp_scores |>
-                filter(dataset == subset_names[s]) |>
-                mutate(
-                    loop_element = factor(loop_element, levels = loop_elements))
-            filtered_df$loop_element <- relevel(
-                filtered_df$loop_element, ref = as.character(loop_elements[1]))
-
-            fit <- lm(score ~ loop_element, data = filtered_df)
-            fits_sp[[subset_names[s]]] <- fit
-
-            tidy_fit <- broom::tidy(fit, conf.int = TRUE) |>
-                filter(term != "(Intercept)") |>
-                mutate(model = subset_names[s], species = sp)
-
-            tidy_all <- rbind(tidy_all, tidy_fit)
-        }
-        list_fits[[as.character(sp)]] <- fits_sp
-    }
-
-    bottom_caption <- if (group_species) {
-        "95% CI of scores, average per k_fold."
-    } else {
-        "95% CI of scores, average per k_fold, per species."
-    }
-
-    p <- dwplot(tidy_all,
-                model_order = rev(subset_names),
-                vars_order = paste0("loop_element", rev(loop_elements[-1]))) |>
-        relabel_predictors(setNames(
-            rev(loop_elements[-1]),
-            paste0("loop_element", rev(loop_elements[-1])))) +
-        coord_flip() +
-        geom_vline(xintercept = 0, colour = "grey60", linetype = 2) +
-        xlab(xlabel) +
-        ylab(ylabel) +
-        labs(caption = bottom_caption, fill = "Subset") +
-        scale_y_discrete(labels = abbreviate_loop_labels)
-
-    if (!group_species) p <- p + facet_wrap(~species, nrow = 1)
-
-    p <- my_custom_ggplot_theme(p, LIGHT = TRUE) +
-        scale_color_manual(values = c(PALETTE[2], PALETTE[3], PALETTE[1]))
-
-    if (grepl("MSE", metric)) {
-        p <- p + scale_x_reverse()
-    }
-
-    finalize_plot(p, save_to, what = "dotwhiskers")
-    return(list(summary = scores_df, models = list_fits))
+    return(list(scores = scores_df, diffs = raw_diffs_df, plot = p))
 }
 
 # A function to show the number of species with an improvement of 1% in their
@@ -1514,12 +1456,29 @@ boxplot_sp_improvements <- function(
                 aes(y = improvements, x = loop_element, fill = subset))        
     }
  
+    bottom_caption <- paste("Number of species per box:", n_species, ".")
+    
+    format_reference_path <- sub("n-variables", "n variables", sub("training-size", "training size", sub("new-samples", "new samples", reference_model_path)))
+    format_reference_path <- paste(sub("-", "=", strsplit(substring(format_reference_path, 7, nchar(format_reference_path)-2), "_")[[1]], fixed = TRUE), collapse = ", ")
+
+    format_prefix <- sub("n-variables", "n variables", sub("training-size", "training size", sub("new-samples", "new samples", loop_prefix)))
+    format_prefix <- paste(sub("-", "=", strsplit(substring(format_prefix, 7, nchar(format_prefix)-1), "_")[[1]], fixed = TRUE), collapse = ", ")
+
+
+    format_suffix <- sub("n-variables", "n variables", sub("training-size", "training size", sub("new-samples", "new samples", loop_suffix)))
+    format_suffix <- paste(sub("-", "=", strsplit(substring(format_suffix, 1, nchar(format_suffix)-2), "_")[[1]], fixed = TRUE), collapse = ", ")
+
+    bottom_caption <- paste0(
+        bottom_caption,
+        "\nReference: ", format_reference_path, 
+        ".\nCompared with: ", format_prefix,": x-value", format_suffix, ".")
+
     p <- p +
         geom_boxplot(
             position = position_dodge(width = 0.75), 
             width = 0.6, outlier.shape = 16) +
         labs(
-            caption = paste("Number of species per box:", n_species, "."), 
+            caption = bottom_caption, 
             fill = "Subset") +
         ylab(paste0(
             "Number of species with \nimprovement >", proportion*100,
@@ -1537,5 +1496,333 @@ boxplot_sp_improvements <- function(
     }
 
     finalize_plot(p, save_to, what = "data")
-    return(list(raw_diffs = prop_diffs_df))
+    return(list(plot = p))
+}
+
+
+# A function to make statistical comparison of scores, with a factorial effect.
+# ARGS:
+#   - parent_folder: a string. 
+#       Path to parent of subfolders containing `{subset_name}_scores.csv`.
+#   - save_to: a string. Path which should end with .pdf. 
+#       If NULL, does not save pdf.
+#   - loop_prefix: a string. The prefix of the subfolders names.
+#   - loop_elements: a list of strings. Middle elements for subfolders names.
+#   - loop_suffix: a string. The suffix of the subfolders names.
+#   - k_fold: a numeric. The number of cross-validation subsets to make. 
+#       Goes after suffix and reference_model_path .
+#   - metric: a string. Metric to extract from file (MSE, RMSE, AUC or TjuR2).
+#   - subset_names: a list string. Usually c("train", "val", "test").
+#   - xlabel: a string. The xlabel for the plot (default is "Model type").
+#   - ylabel: a string. The ylabel for the plot (default is "Average Score").
+#   - group_species: whether to take the mean 
+#       accross all k_folds and species (TRUE, default) or 
+#       only accross k_folds (FALSE).
+#   - species_names: names of species in CSV 
+#       (rownames are not available from csvs).
+dotwhisker_model_scores <- function(
+        parent_folder,
+        loop_prefix,
+        loop_elements,
+        loop_suffix,
+        k_fold,
+        metric,
+        subset_names = c("train", "val", "test"),
+        xlabel = "Value",
+        ylabel = "Effect",
+        group_species = TRUE,
+        species_names = NULL,
+        save_to = NULL) {
+
+    if (is.numeric(loop_elements)) {
+        stop(paste0(
+            "This function was not made to handle factors in 'loop_elements',",
+            " not numerics. For numerics, Try barplot_raw_scores() with ",
+            "`barplot = FALSE` instead."))
+    }
+    
+    cli_alert_info("Fetching scores...")
+    scores_df <- data.frame()
+    for (k in seq(k_fold)) {
+        for (loop_element in loop_elements) {
+            run_path <- file.path(
+                parent_folder, 
+                paste0(loop_prefix, loop_element, loop_suffix, k))
+
+            for (subset_name in subset_names) {
+                local_csv <- suppressMessages(load_metric_scores(
+                    run_path, subset_name, metric = NULL))
+                subset_scores <- local_csv |>
+                    mutate(species = factor(species_names)) |>
+                    pivot_longer(
+                        cols = c(all_of(metric)),
+                        names_to = "score_type", values_to = "score") |>
+                    mutate(
+                        loop_element = loop_element, 
+                        k_fold = k, 
+                        dataset = subset_name)
+
+                scores_df <- rbind(scores_df, subset_scores)
+            }
+        }
+    }
+
+    # One pooled "group" if group_species, otherwise one group per species   
+    if (!group_species) {
+        scores_df <- scores_df |> 
+            mutate(species = factor(species, levels = species_names))
+    }
+
+    scores_df <- scores_df |>
+        mutate(k_fold = factor(k_fold)) |>
+        mutate(loop_element = factor(loop_element, levels=loop_elements))
+
+    # fit one model per data subset
+    model_list <- list()
+    for (subset in subset_names) {
+        if (group_species) {
+            model_list[[subset]] <- lmer(score ~ loop_element + (1 | k_fold) + (1 | species),
+                data = subset(scores_df, dataset == subset)) 
+        } else {
+            for (sp in species_names) {
+                key <- paste(subset, sp, sep = "_")
+                model_list[[key]] <- lmer(
+                    score ~ loop_element + (1 | k_fold),
+                    data = subset(scores_df, dataset == subset & species == sp)
+                )
+            }
+        }
+    }
+
+    # tidy the table if not grouping species
+    if (!group_species) {
+        tidy_list <- list()
+        for (subset in subset_names) {
+            for (sp in species_names) {
+                key <- paste(subset, sp, sep = "_")
+                tidy_list[[key]] <- broom.mixed::tidy(
+                    model_list[[key]], effects = "fixed", conf.int = TRUE) |>
+                    mutate(subset = subset, species = sp)
+            }
+        }
+        model_list <- bind_rows(tidy_list) |>
+            filter(term != "(Intercept)") |>
+            mutate(model = subset)
+    }
+
+    if (group_species) {
+        bottom_caption <- paste(
+            "Comparison of scores per subset, k_fold mean + 95% CI.")
+    } else {
+        bottom_caption <- paste(
+            "Comparison of scores per subset per species,",
+            "k_fold mean + 95% CI.")
+    }
+
+    format_prefix <- sub("n-variables", "n variables", sub("training-size", "training size", sub("new-samples", "new samples", loop_prefix)))
+    format_prefix <- paste(sub("-", "=", strsplit(substring(format_prefix, 7, nchar(format_prefix)-1), "_")[[1]], fixed = TRUE), collapse = ", ")
+
+
+    format_suffix <- sub("n-variables", "n variables", sub("training-size", "training size", sub("new-samples", "new samples", loop_suffix)))
+    format_suffix <- paste(sub("-", "=", strsplit(substring(format_suffix, 1, nchar(format_suffix)-2), "_")[[1]], fixed = TRUE), collapse = ", ")
+
+    bottom_caption <- paste0(
+        bottom_caption,
+        "\nModel type: ", format_prefix,": x-value", format_suffix, ".")
+    
+    p <- dwplot(model_list, 
+                effects = "fixed",
+                model_order = rev(subset_names),
+                vars_order = paste0("loop_element", rev(loop_elements[-1]))) |>
+        relabel_predictors(setNames(
+            rev(loop_elements[-1]),
+            paste0("loop_element", rev(loop_elements[-1])))) +
+        geom_vline(xintercept = 0, linetype = 2, color = "grey50") +
+        coord_flip() +
+        xlab(xlabel) +
+        ylab(ylabel) +
+        labs(caption = bottom_caption, fill = "Subset", color = "Subset") +
+        scale_y_discrete(labels = abbreviate_loop_labels)
+
+    if (!group_species) p <- p + facet_wrap(~species, nrow = 1)
+
+    p <- my_custom_ggplot_theme(p, LIGHT = TRUE) +
+        scale_color_manual(values = c(PALETTE[2], PALETTE[3], PALETTE[1]))
+
+    if (grepl("MSE", metric)) {
+        p <- p + scale_x_reverse()
+    }
+
+    finalize_plot(p, save_to, what = "dotwhiskers")
+    return(list(plot=p, models=model_list))
+}
+
+# A function to make statistical comparisons of scores, with a numeric effect.
+# ARGS:
+#   - parent_folder: a string. 
+#       Path to parent of subfolders containing `{subset_name}_scores.csv`.
+#   - loop_prefix: a string. The prefix of the subfolders names.
+#   - loop_elements: a list of strings. Middle elements for subfolders names.
+#   - loop_suffix: a string. The suffix of the subfolders names.
+#   - k_fold: a numeric. The number of cross-validation subsets to make. 
+#       Goes after suffix and reference_model_path .
+#   - metric: a string. Metric to extract from file (MSE, RMSE, AUC or TjuR2).
+#   - subset_names: a list string. Usually c("train", "val", "test").
+#   - xlabel: a string. The xlabel for the plot (default is "Model type").
+#   - ylabel: a string. The ylabel for the plot (default is "Average Score").
+#   - group_species: whether to take the mean 
+#       accross all k_folds and species (TRUE, default) or 
+#       only accross k_folds (FALSE).
+#   - species_names: names of species in CSV 
+#       (rownames are not available from csvs).
+#   - save_to: a string. Path which should end with .pdf. 
+#       If NULL, does not save pdf.
+lineplot_model_scores <- function(
+        parent_folder,
+        loop_prefix,
+        loop_elements,
+        loop_suffix,
+        k_fold,
+        metric,
+        xlabel = "Model type",
+        ylabel = "Average Score",
+        group_species = TRUE,
+        species_names = NULL,
+        subset_names = c("train", "val", "test"),
+        save_to = NULL) {
+    
+    cli_alert_info("Fetching scores...")
+    scores_df <- data.frame()
+    for (k in seq(k_fold)) {
+        for (loop_element in loop_elements) {
+            run_path <- file.path(
+                parent_folder, 
+                paste0(loop_prefix, loop_element, loop_suffix, k))
+
+            for (subset_name in subset_names) {
+                local_csv <- suppressMessages(load_metric_scores(
+                    run_path, subset_name, metric = NULL))
+                subset_scores <- local_csv |>
+                    mutate(species = factor(species_names)) |>
+                    pivot_longer(
+                        cols = c(all_of(metric)),
+                        names_to = "score_type", values_to = "score") |>
+                    mutate(
+                        loop_element = loop_element, 
+                        k_fold = k, 
+                        dataset = subset_name)
+
+                scores_df <- rbind(scores_df, subset_scores)
+            }
+        }
+    }
+
+    # One pooled "group" if group_species, otherwise one group per species   
+    if (!group_species) {
+        scores_df <- scores_df |> 
+            mutate(species = factor(species, levels = species_names))
+    }
+
+    ### Aggregate
+    model_list <- list()
+    for (subset in subset_names) {
+        model_list[[subset]] <- lmer(score ~ loop_element + (1 | k_fold) + (1 | species),
+                data = subset(scores_df, dataset == subset)) 
+        # # The model will estimate the average effect of each value of loop_element 
+        # # on the metric, with a random effect of k_fold and species
+        # cat(paste(toupper(subset), "\n"))
+        # print(summary(model_list[[subset]])$coefficients)
+        # cat("\n")
+    }
+
+    # Fitted lines
+    if (group_species) {
+        pred_df <- bind_rows(lapply(names(model_list), function(subset) {
+            ggpredict(model_list[[subset]], terms = "loop_element") |>
+                as.data.frame(terms_to_colnames = TRUE) |>
+                mutate(dataset = subset)
+        }))
+    } else {
+        pred_df <- bind_rows(lapply(names(model_list), function(subset) {
+            ggpredict(model_list[[subset]],
+                    terms = c("loop_element", "species"),
+                    type = "random") |>
+                as.data.frame(terms_to_colnames = TRUE) |>
+                mutate(dataset = subset)
+        }))
+    }
+
+    pred_df <- pred_df |>
+        mutate(dataset = factor(dataset, levels = subset_names))
+
+    # Scatter plot of means
+    if (group_species) {
+        group_these_columns <- c("loop_element", "dataset")
+    } else {
+        group_these_columns <- c("loop_element", "dataset", "species")
+    }
+    aggregated_df <- scores_df |>
+        group_by(across(all_of(group_these_columns))) |>
+        summarise(
+            avg_score = mean(score, na.rm = TRUE),
+            .groups = "drop_last") |>
+        mutate(dataset = factor(dataset, levels = subset_names))
+    
+    cli_alert_info("Creating plot...")
+
+    p <- ggplot() +
+        # Ribbon + line from the model predictions
+        geom_ribbon(data = pred_df,
+                    aes(x = loop_element, ymin = conf.low, ymax = conf.high, fill = dataset),
+                    alpha = 0.33) +
+        geom_line(data = pred_df,
+                    aes(x = loop_element, y = predicted, color = dataset),
+                    linewidth = 1) +
+        
+        # Points + line from the aggregated data
+        geom_point(data = aggregated_df,
+                    aes(x = loop_element, y = avg_score, color = dataset),
+                    size = 1) +
+        geom_line(data = aggregated_df,
+                    aes(x = loop_element, y = avg_score, color = dataset)) +
+        labs(x = "loop_element", y = "Predicted metric",
+            color = "Subset", fill = "Subset") +
+        theme_minimal()
+
+    if (group_species) {
+        bottom_caption <- paste(
+            "Comparison of scores per subset, k_fold mean + 95% CI.")
+    } else {
+        bottom_caption <- paste(
+            "Comparison of scores per subset, per species,",
+            "k_fold mean + 95% CI.")
+    }
+
+    format_prefix <- sub("n-variables", "n variables", sub("training-size", "training size", sub("new-samples", "new samples", loop_prefix)))
+    format_prefix <- paste(sub("-", "=", strsplit(substring(format_prefix, 7, nchar(format_prefix)-1), "_")[[1]], fixed = TRUE), collapse = ", ")
+
+
+    format_suffix <- sub("n-variables", "n variables", sub("training-size", "training size", sub("new-samples", "new samples", loop_suffix)))
+    format_suffix <- paste(sub("-", "=", strsplit(substring(format_suffix, 1, nchar(format_suffix)-2), "_")[[1]], fixed = TRUE), collapse = ", ")
+
+    bottom_caption <- paste0(
+        bottom_caption,
+        "\nModel type: ", format_prefix,": x-value", format_suffix, ".")
+
+    p <- p + 
+        labs(caption = bottom_caption)
+
+    if (!group_species) {
+            p <- p + facet_grid( ~ species, scales = "fixed")
+        }
+    
+    p <- my_custom_ggplot_theme(p) + 
+        scale_fill_manual(values = c(PALETTE[2], PALETTE[3], PALETTE[1])) +
+        scale_color_manual(values = c(PALETTE[2], PALETTE[3], PALETTE[1])) +
+        xlab(xlabel) + 
+        ylab(ylabel) +
+        guides(fill = "none") 
+
+    finalize_plot(p, save_to, what = "performances")
+    return(list(plot= p, data_df=aggregated_df, models=model_list))
 }

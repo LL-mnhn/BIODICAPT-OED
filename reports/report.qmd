@@ -106,7 +106,7 @@ To test this, we draw on *Mondain-Monval et al.* work [@mondainmonval_adaptive_2
 | Parameter            | M.M.                                     | Ours                    |
 |:--------:            |:-------------:                           |:-----:                  |
 | Dataset              | Simulated with `virtualspecies` package  | STOC annual sampling    |
-| Number of species    | 50 species                               | 5 species               |
+| Number of species    | 50 species                               | 15 species              |
 | Number of variables  | 10 (randomly selected from 33 available) | 6 (direct from STOC)    |
 | Model type           | Ensemble model (GLM + GAM + RF)          | HMSC                    |
 | Re-training strategy | Re-sampling of 1%, 10% or 50% of dataset | Addition of new samples (50) |
@@ -249,12 +249,13 @@ loop_list <- unique(param_grid[[COLUMN]])
     save_to = NULL))
 ```
 
-#### Dotwhisker differences
+#### Estimated effects
 ```{r, fig.dim=c(11, 6)}
 #| label: copy of fig3a bis
 #| echo: false
 #| warning: false
-. <- suppressMessages(dotwhisker_model_scores(
+#| output: true
+strat_stats <- suppressMessages(dotwhisker_model_scores(
     parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)), 
     save_to = NULL,
     loop_prefix = filename_sections[[1]], 
@@ -262,38 +263,46 @@ loop_list <- unique(param_grid[[COLUMN]])
     loop_suffix = filename_sections[[2]], 
     k_fold = parameters$K_FOLDS, 
     metric = "MSE",
-    xlabel = "Difference in RMSE", 
+    xlabel = "Difference in MSE", 
     ylabel = paste0(
         "Effect of ", tolower(COLUMN),
         ", compared to '", loop_list[1], "'"),
     group_species = TRUE,
     species_names = parameters$Y_SPECIES))
 ```
-
 :::
 
 *BAU: Business-as-usual ; GF: Gap-filling ; SU: Simplified-uncertainty*
 
-### Interlude: discussion 
+**Fitted model:**
+```{r}
+#| label: strategy stats
+#| echo: false
+#| warning: false
+#| output: true
+print(summary(strat_stats$models$test), correlation = FALSE)
+```
 
-#### What can we see?
+**Conclusions:**
+This model shows that, when adding 50 new points to our training subsets, test scores then vary depending on the strategy chosen to add those points. "GF" and "SU" show significantly lower MSE in test, while "BAU" shows no detectable effect.
+
+Estimates are slightly better for "GF", but remains comparable to "SU".
+
+All three effect sizes (0.0018-0.0028 in MSE units) are also small relative to the residual noise floor (SD ≈ 0.0086) and an order of magnitude smaller than between-species variability (SD ≈ 0.076), which meaningful for model tuning, but not a large practical effect at this sample size.
+
+
+**Comparison with Mondain-Monval et al.:**
 
 Mondain-Monval et al. [@mondainmonval_adaptive_2024] and we computed the difference in MSE between a base strategy (business-as-usual) and other strategies. However, our training sets were not built in the same way:
 - Mondain-Monval et al. [@mondainmonval_adaptive_2024] **changed a proportion of their training set** (1%, 10%; 50%) according to the chosen strategy.
-- We ** added new samples to our training set** (50, with a base strategy of 125 samples) according to the chosen strategy.
+- We **added new samples to our training set** (50, with a base strategy of 125 samples) according to the chosen strategy.
 
 Our figures also show scores in train/val/test. We assume Mondain-Monval et al. [@mondainmonval_adaptive_2024] show only scores in test.
 
-In our results, differences in MSE between resampling strategies are slight, less marked than those of [@mondainmonval_adaptive_2024]. Statistical tests reveal that there is no significant differences in the test scores. What can be observed is that the "BAU" strategy yields to a more visible decrease in MSE (aka a decrease in errors). Interestingly, the "SU" strategy does not yield to the best results (which was what we expected from [@mondainmonval_adaptive_2024]).
+In our results, differences in MSE between resampling strategies are slight, less marked than those of [@mondainmonval_adaptive_2024]. Statistical tests reveal that there are significant differences in the test scores compared to no resampling. Interestingly, the "SU" strategy does not clearly yields to the best results (which was what we expected from [@mondainmonval_adaptive_2024]).
 
 This is actually quite logical: the "SU" strategy adds training samples for which the predictions of the model are the most uncertain, which is why variability is wider in prediction.
 
-
-#### What to conclude?
-
-Subset comparisons confirm that training is harder with new unknown samples (training scores dropped), but test scores are better. 
-
-Overall, the addition of new points in the sampling strategies has a slight positive effect on the predictions of the models on the test set. The best performing strategy on our practical dataset, using HMSC, seems to be "gap-filling" (GF). However, the differences are not statitically significant.
 
 ## Other results
 ### Training size
@@ -352,26 +361,40 @@ loop_list <- sort(loop_list)
     save_to = NULL))
 ```
 
-#### Lineplot
+#### Estimated effects
 ```{r, fig.dim=c(11, 6)}
 #| label: training_size_3
 #| echo: false
 #| warning: false
-. <- suppressMessages(barplot_raw_scores(
+train_size_stats <- suppressMessages(lineplot_model_scores(
     parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)), 
-    save_to = NULL,
     loop_prefix = filename_sections[[1]], 
     loop_elements = loop_list, 
     loop_suffix = filename_sections[[2]], 
     k_fold = parameters$K_FOLDS, 
-    xlabel = paste0("Effect of ", tolower(COLUMN)," type on metrics"), 
+    metric = "MSE",
+    xlabel = paste0("Effect of ", tolower(COLUMN)," type on MSE"), 
     ylabel = "Average score per species",
     group_species = TRUE,
     species_names = parameters$Y_SPECIES,
-    barplot = FALSE,
-    add_stats = TRUE))
+    save_to = NULL))
 ```
 :::
+
+**Fitted model:**
+```{r}
+#| label: training size stats
+#| echo: false
+#| warning: false
+#| output: true
+print(summary(train_size_stats$models$test), correlation = FALSE)
+```
+
+**Conclusions:**
+
+Increasing training size produces a strong, highly significant (p <<< 0.01), and meaningful reduction in test MSE. 
+
+Over 100 samples, this effect is comparable in magnitude to the variance explained by species groups.
 
 
 ### Number of new samples
@@ -430,26 +453,37 @@ loop_list <- sort(loop_list)
     save_to = NULL))
 ```
 
-#### Lineplot
+#### Estimated effects
 ```{r, fig.dim=c(11, 6)}
 #| label: new_samples_3
 #| echo: false
 #| warning: false
-. <- suppressMessages(barplot_raw_scores(
+new_sample_stats <- suppressMessages(lineplot_model_scores(
     parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)), 
-    save_to = NULL,
     loop_prefix = filename_sections[[1]], 
     loop_elements = loop_list, 
     loop_suffix = filename_sections[[2]], 
     k_fold = parameters$K_FOLDS, 
-    xlabel = paste0("Effect of ", tolower(COLUMN)," type on metrics"), 
+    metric = "MSE",
+    xlabel = paste0("Effect of ", tolower(COLUMN)," type on MSE"), 
     ylabel = "Average score per species",
     group_species = TRUE,
     species_names = parameters$Y_SPECIES,
-    barplot = FALSE,
-    add_stats = TRUE))
+    save_to = NULL))
 ```
 :::
+
+**Fitted model:**
+```{r}
+#| label: new samples stats
+#| echo: false
+#| warning: false
+#| output: true
+print(summary(new_sample_stats$models$test), correlation = FALSE)
+```
+
+**Conclusions:**
+Similarly to training size, the effect is statistically significant (p <<< 0.01) but small in intensity. 
 
 
 ### Number of explicative variables
@@ -509,26 +543,37 @@ loop_list <- sort(loop_list)
     save_to = NULL))
 ```
 
-#### Lineplot
+#### Estimated effects
 ```{r, fig.dim=c(11, 6)}
 #| label: formulas_3
 #| echo: false
 #| warning: false
-. <- suppressMessages(barplot_raw_scores(
+formulas_stats <- suppressMessages(lineplot_model_scores(
     parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)), 
-    save_to = NULL,
     loop_prefix = filename_sections[[1]], 
     loop_elements = loop_list, 
     loop_suffix = filename_sections[[2]], 
     k_fold = parameters$K_FOLDS, 
-    xlabel = paste0("Effect of ", tolower(COLUMN)," type on metrics"), 
+    metric = "MSE",
+    xlabel = paste0("Effect of ", tolower(COLUMN)," type on MSE"), 
     ylabel = "Average score per species",
     group_species = TRUE,
     species_names = parameters$Y_SPECIES,
-    barplot = FALSE,
-    add_stats = TRUE))
+    save_to = NULL))
 ```
 :::
+
+**Fitted model:**
+```{r}
+#| label: formulas stats
+#| echo: false
+#| warning: false
+#| output: true
+print(summary(formulas_stats$models$test), correlation = FALSE)
+```
+
+**Conclusions:**
+There is weak evidence (p ≈ 0.05) that adding explicative variables reduces test MSE: there are only 3 points, which are not necessarily linearly distributed.
 
 ### Random Effect
 ::: {.panel-tabset}
@@ -585,12 +630,12 @@ loop_list <- unique(param_grid[[COLUMN]])
     save_to = NULL))
 ```
 
-#### Dotwhisker differences
+#### Estimated effects
 ```{r, fig.dim=c(11, 6)}
 #| label: r_effect_3
 #| echo: false
 #| warning: false
-. <- suppressMessages(dotwhisker_model_scores(
+random_stats <- suppressMessages(dotwhisker_model_scores(
     parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)), 
     save_to = NULL,
     loop_prefix = filename_sections[[1]], 
@@ -598,7 +643,7 @@ loop_list <- unique(param_grid[[COLUMN]])
     loop_suffix = filename_sections[[2]], 
     k_fold = parameters$K_FOLDS, 
     metric = "MSE",
-    xlabel = "Difference in RMSE", 
+    xlabel = "Difference in MSE", 
     ylabel = paste0(
         "Effect of ", tolower(COLUMN),
         ", compared to '", loop_list[1], "'"),
@@ -607,15 +652,31 @@ loop_list <- unique(param_grid[[COLUMN]])
 ```
 :::
 
-## Discussion of other results
-Looking at the other plots:
-- Training size as a significant (all p-values < 0.001) effect on scores.
-- Number of new samples does not seem to have any significant effect (which is weird).
-- Number of explicative variables as an effect (all p-values < 0.001).
-- Adding a random effect to HMSC yields to better scores in training but no differences in val or test.
+**Fitted model:**
+```{r}
+#| label: r_effect stats
+#| echo: false
+#| warning: false
+#| output: true
+print(summary(random_stats$models$test), correlation = FALSE)
+```
 
-Overall, the larger the number of training samples, explicative variables and/or new samples, the better the model performs in val/test, and the worst it performs in training. Although the effects are small, they are comparable to the ones of [@mondainmonval_adaptive_2024], and our results show that this as an impact on predictions (improvements by >1% increases).
+**Conclusions:**
+No significant difference in test MSE when the species random intercept is included vs. excluded (p > 0.5), despite a visible improvement in training fit. 
 
-*Results "per species" are available but not discussed in this report, see PDF files in `outputs/figures/STOC-OED/`*
+This is a *textbook* signature of the random effect absorbing training-set noise without improving generalisation, which is expected between test units are very different, and not overlapping with training units. Surely a "distance" random effect would be more impactful.
+
+## Overall discussion
+Five predictors were tested independently, one at a time, each in its own mixed model. To summarise the results:
+
+- Training size has a positive effect on test performance. This is the strongest and most of this report .
+- Sampling strategy: "GF" and "SU" perform significantly better than no resampling strategy.
+- Number of new samples (independent of overall training size) and number of explicative variables both show statistically detectable but modest effects in practice.
+- Explicit species random effects should consider distance between points instead of units, which has no impact.
+
+Species random effect is high. As our aim is to generalise the predictions beyond the 15 species used here, this is fine, but it should be kept in mind that these results are highly species-dependant.
+K-folds random effects are negligible, which is expected and good thing, meaning that the partitioning of the dataset has little to no effect on scores.
+
+Overall, increasing the number of training samples is the dominant lever for improving HMSC model performance, with returns flattening beyond roughly 100 sampled plots. However, this is only true for an initial random sampling of the STOC dataset, what if the initial sampled agricultural plots were not randomly chosen ? (i.e. in BIODICAPT, some explicative variables could be over-represented, which would skew the distributions). We'll have to change the dataset to see that!
 
 \newpage

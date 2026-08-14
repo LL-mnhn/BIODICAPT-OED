@@ -114,9 +114,6 @@ for (column in names(param_grid)) {
             parent_folder = file.path(RESULTS_PATH, SUBFOLDER), 
             reference_model_path = paste0(
                 filename_sections[[1]], loop_list[1], filename_sections[[2]]), 
-            save_to = file.path(
-                FIGURES_PATH, SUBFOLDER,
-                paste0("boxplot_", tolower(column), sp, "_comparison.pdf")),
             loop_prefix = filename_sections[[1]], 
             loop_elements = loop_list[-1], 
             loop_suffix = filename_sections[[2]], 
@@ -127,14 +124,15 @@ for (column in names(param_grid)) {
                 "Effect of ", tolower(column),
                 ", compared to '", loop_list[1], "'"), 
             group_species = bool,
-            species_names = parameters$Y_SPECIES))
+            species_names = parameters$Y_SPECIES,
+            save_to = file.path(
+                FIGURES_PATH, SUBFOLDER,
+                paste0("boxplot_", tolower(column), sp, "_comparison.pdf"))
+        ))
 
         if (is.numeric(loop_list)) {
-            . <- suppressMessages(barplot_raw_scores(
+            . <- suppressMessages(lineplot_model_scores(
                 parent_folder = file.path(RESULTS_PATH, SUBFOLDER), 
-                save_to = file.path(
-                    FIGURES_PATH, SUBFOLDER,
-                    paste0("lineplot_", tolower(column), sp, "_scores.pdf")),
                 loop_prefix = filename_sections[[1]], 
                 loop_elements = if (column != "strategy") {
                         loop_list
@@ -143,28 +141,32 @@ for (column in names(param_grid)) {
                     }, 
                 loop_suffix = filename_sections[[2]], 
                 k_fold = parameters$K_FOLDS, 
-                xlabel = paste0("Effect of ", tolower(column)," type on metrics"), 
+                metric = "MSE",
+                xlabel = paste0("Effect of ", tolower(column)," type on MSE"), 
                 ylabel = "Average score per species",
                 group_species = bool,
                 species_names = parameters$Y_SPECIES,
-                barplot = FALSE))
+                save_to = file.path(
+                    FIGURES_PATH, SUBFOLDER,
+                    paste0("lineplot_", tolower(column), sp, "_scores.pdf"))
+                ))
         } else {
             . <- suppressMessages(dotwhisker_model_scores(
                 parent_folder = file.path(RESULTS_PATH, SUBFOLDER), 
-                save_to = file.path(
-                    FIGURES_PATH, SUBFOLDER,
-                    paste0("dotwhisker_", tolower(column), sp, "_scores.pdf")),
                 loop_prefix = filename_sections[[1]], 
                 loop_elements = loop_list, 
                 loop_suffix = filename_sections[[2]], 
                 k_fold = parameters$K_FOLDS, 
                 metric = "MSE",
-                xlabel = "Difference in RMSE", 
-                ylabel = paste0(
-                    "Effect of ", tolower(column),
-                    ", compared to '", loop_list[1], "'"),
+                xlabel = paste0(
+                    "Estimated MSE coefficient relative to '", loop_list[1], "'"),
+                ylabel = paste0("Effect of ", tolower(column)," type on MSE"),
                 group_species = bool,
-                species_names = parameters$Y_SPECIES))
+                species_names = parameters$Y_SPECIES,
+                save_to = file.path(
+                    FIGURES_PATH, SUBFOLDER,
+                    paste0("dotwhisker_", tolower(column), sp, "_scores.pdf")),
+            ))
         }
 
     }
@@ -185,5 +187,6 @@ for (column in names(param_grid)) {
         proportion = 1/100,
         save_to = file.path(
             FIGURES_PATH, SUBFOLDER,
-            paste0("improvement_", tolower(column), sp, "_scores.pdf"))))
+            paste0("improvement_", tolower(column), sp, "_scores.pdf"))
+    ))
 }
