@@ -82,6 +82,7 @@ COMBINATIONS <- list(
         HMSC_XFORMULAS = c(
             ~ (NDVI + light_pollution + p_milieu + altitude + precip_spring + 
                 tmp_spring),
+            ~ (p_milieu + light_pollution + altitude + NDVI),
             ~ (p_milieu + light_pollution + altitude),
             ~ (p_milieu + light_pollution))
     ),
@@ -108,6 +109,18 @@ COMBINATIONS <- list(
                 tmp_spring)
         )
     ),
+    # Add new samples through different strategies
+    list(
+        TRAIN_SIZES = c(125), 
+        R_EFFECTS = c("none"), 
+        NEW_SAMPLE_SIZES = c(50),
+        STRATEGIES = c("none", "simplified-uncertainty", 
+            "2-part-simplified-uncertainty", "3-part-simplified-uncertainty"),
+        HMSC_XFORMULAS = c(
+            ~ (NDVI + light_pollution + p_milieu + altitude + precip_spring + 
+                tmp_spring)
+        )
+    ),
     # Add a different number of new samples
     list(
         TRAIN_SIZES = c(125), 
@@ -118,18 +131,17 @@ COMBINATIONS <- list(
             ~ (NDVI + light_pollution + p_milieu + altitude + precip_spring + 
                 tmp_spring)
         )
-    )
-)
-
-BASE_COMBINATION <- list( # must be one of COMBINATIONS
-    # Change the number of training samples
-    TRAIN_SIZES = c(125), 
-    R_EFFECTS = c("none"), 
-    STRATEGIES = c("none", "simplified-uncertainty"), # "none" is base, "simplified-uncertainty" is when looping on NEW_SAMPLE_SIZES
-    NEW_SAMPLE_SIZES = c(0, 50), # 0 is base, 50 is when looping on STRATEGIES
-    HMSC_XFORMULAS = c(
-        ~ (NDVI + light_pollution + p_milieu + altitude + precip_spring + 
-            tmp_spring)
+    ),
+    # Add a different number of new samples
+    list(
+        TRAIN_SIZES = c(125), 
+        R_EFFECTS = c("none"), 
+        NEW_SAMPLE_SIZES = c(0, 10, 25, 50, 100, 150),
+        STRATEGIES =  c("gap-filling"),
+        HMSC_XFORMULAS = c(
+            ~ (NDVI + light_pollution + p_milieu + altitude + precip_spring + 
+                tmp_spring)
+        )
     )
 )
 
@@ -150,8 +162,7 @@ prepare_necessities <- function() {
         THIN = THIN,
         NTRANSIENT = NTRANSIENT,
         NCHAINS = NCHAINS,
-        COMBINATIONS = COMBINATIONS,
-        BASE_COMBINATION = BASE_COMBINATION
+        COMBINATIONS = COMBINATIONS
     )
 
     remake_files <- function() {
@@ -311,15 +322,6 @@ for (k in seq(K_FOLDS)) {
         x_variables <- all.vars(formula)
         x_groups_cats <- seq(1:length(x_variables)) # For variance proportion       
 
-        # if strategy is none, overwrite n_new_samples to avoid errors
-        if (strategy == "none") {
-            n_new_samples <- 0
-        }
-        # if n_new_samples is 0, no need to apply a strategy, use "none"
-        if (n_new_samples == 0) {
-            strategy <- "none"
-        }
-
         # Display current setup
         id_loop <- id_loop + 1
         cli_alert_warning(paste0("----- Running loop: ", id_loop, 
@@ -333,16 +335,17 @@ for (k in seq(K_FOLDS)) {
 
         # 0. Setup
         cli_alert_info(("0. Setting up path..."))
-        path_local_results <- file.path(
-            PATH_STOC_RESULTS, paste0(
-                "model_random-", r_effect,
-                "_strategy-", strategy,
-                "_new-samples-", n_new_samples,
-                "_training-size-", train_size,
-                "_n-variables-", length(x_variables),
-                "_k", k
-            )
-        )
+        path_local_results <- make_run_path(
+            folder = PATH_STOC_RESULTS, 
+            combination = list(
+                R_EFFECTS = r_effect,
+                STRATEGIES = strategy,
+                NEW_SAMPLE_SIZES = n_new_samples,
+                TRAIN_SIZES = train_size,
+                HMSC_XFORMULAS = x_variables
+            ),
+            k_fold = k
+        )            
 
         # pre-check : verify that this combination of variables
         # does not already exists (quick optimisation for
@@ -354,24 +357,6 @@ for (k in seq(K_FOLDS)) {
         
         # else, continue as always
         dir.create(path_local_results, recursive = FALSE)
-        # only used when strategy is "simplified-uncertainty"
-        path_base_model <- file.path(
-            PATH_STOC_RESULTS, 
-            paste0(
-                "model_random-", BASE_COMBINATION$R_EFFECTS,
-                "_strategy-", BASE_COMBINATION$STRATEGIES[1],
-                "_new-samples-", BASE_COMBINATION$NEW_SAMPLE_SIZES[1],
-                "_training-size-", BASE_COMBINATION$TRAIN_SIZES,
-                "_n-variables-", 
-                length(all.vars(BASE_COMBINATION$HMSC_XFORMULAS[[1]])),
-                "_k", k),
-            "chains.rds"
-        )
-        if ((!file.exists(path_base_model)) && (strategy != "none")) {
-            stop(paste0(
-                path_base_model, ", path not found.",
-                " Did you call a similar model with strategy='none' first?"))
-        }
 
         # if strategy is X_parts, divide the number of samples and fit as many
         # times as necessary
@@ -383,9 +368,28 @@ for (k in seq(K_FOLDS)) {
             strategy, 
             ifelse((n_parts == 1), 1, nchar(regex_parts[[1]][1])+1), 
             nchar(strategy))
-        path_previous_model <- path_base_model
         n_new_samples_per_part <- split_evenly(n_new_samples, n_parts)
         
+        if (grepl("uncertainty", strategy)) {
+            # when using uncertainty model, we need to "force" the initial
+            # model to be one that had no re-training on new samples
+            previous_model <- readRDS(
+                file.path(
+                    make_run_path(
+                        folder = PATH_STOC_RESULTS, 
+                        combination = list(
+                            R_EFFECTS = r_effect,
+                            STRATEGIES = "none",
+                            NEW_SAMPLE_SIZES = c(0),
+                            TRAIN_SIZES = train_size,
+                            HMSC_XFORMULAS = x_variables
+                        ),
+                        k_fold = k),  
+                    "chains.rds"))
+        } else {
+            previous_model <- NULL
+        }
+
         # If loop runs n times (n>1), the model used to compute the second part
         # of the dataset becomes the model computed on part n-1.
         # This *could* be a problem since `training_set` is updated but not
@@ -397,7 +401,7 @@ for (k in seq(K_FOLDS)) {
                 extension_subset = subsets$new_pool,
                 new_sample_size = n_new_samples_per_part[part],
                 variables = x_variables,
-                hM = readRDS(path_previous_model))
+                hM = previous_model)
 
             # 1. Fit model
             cat("\n")
@@ -419,7 +423,8 @@ for (k in seq(K_FOLDS)) {
                 allow_parallel = TRUE)
             
             # previous model becomes the one we just computed
-            path_previous_model <- file.path(path_local_results, "chains.rds")
+            previous_model <- readRDS(
+                file.path(path_local_results, "chains.rds"))
         }
 
 

@@ -21,87 +21,42 @@ set.seed(496) # for reproducible results
 SUBFOLDER <- "STOC-OED"
 parameters <- readRDS(file.path(RESULTS_PATH, SUBFOLDER, "parameters.rds"))
 COMBINATIONS <- parameters$COMBINATIONS
-param_grid <- build_param_grid(COMBINATIONS)
-
-
-##### Helper functions ##### --------------------------------------------------
-cli_alert_warning(
-    "[WARNING]: Reference values are *hard coded* in 'loop_selector'.")
-loop_selector <- function(
-        grid, loop_on, base = parameters$BASE_COMBINATION){
-    # initialize base values
-    combination <- list(
-        train_size = base$TRAIN_SIZES,
-        r_effect = base$R_EFFECTS,
-        strategy = base$STRATEGIES[1],
-        formulas = base$HMSC_XFORMULAS,
-        n_new_samples = base$NEW_SAMPLE_SIZE[1]
-    )
-
-    # replace formulas by number of variables
-    combination$formulas <- lapply(
-            lapply(combination$formulas, all.vars), 
-        length)
-    
-    # if looping on strategies, change base new_sample_size
-    if (loop_on == "strategy") {
-        combination$n_new_samples <- base$NEW_SAMPLE_SIZE[2]
-    }
-
-    # if looping on new_samples, change base strategy
-    if (loop_on == "n_new_samples") {
-        combination$strategy <- base$STRATEGIES[2]
-    }
-
-    # replace single value by list to loop on
-    combination[[loop_on]] <- unique(param_grid[[loop_on]])
-
-    # a preffix, and a suffix in two parts
-    path_sections <- list("", "")
-    path_idx <- 1
-    parameter_names <- c(
-        "r_effect", "strategy", "n_new_samples", "train_size", "formulas")
-    path_names <- c(
-        "model_random-", "_strategy-", "_new-samples-", "_training-size-", 
-        "_n-variables-")
-
-    # when reaching vector of item in list, switch to next path section
-    for (p in seq_along(parameter_names)) {
-        if (length(combination[[parameter_names[p]]]) > 1) {
-            path_sections[[path_idx]] <- paste0(
-                path_sections[[path_idx]],
-                path_names[p]
-            )
-            path_idx <- path_idx + 1
-        } else {
-            path_sections[[path_idx]] <- paste0(
-                path_sections[[path_idx]],
-                path_names[p], combination[[parameter_names[p]]]
-            )
-        }
-    }
-    path_sections[[2]] <- paste0(path_sections[[2]], "_k")
-
-    return(path_sections)
-}
 
 
 ##### Main ##### --------------------------------------------------------------
 cli_alert_info("------------ Score comparison ------------\n\n")
-for (column in names(param_grid)) {
-    cli_alert_info(paste0("Plotting ", column, "..."))
-    filename_sections <- loop_selector(param_grid, column)
-    loop_list <- unique(param_grid[[column]])
+for (combination in COMBINATIONS) {
+    if (sum(lapply(combination, length) > 1) >1) {
+        stop(paste(
+            "Error in combination, found more than one parameter",
+            "with a vector of values of length > 1."
+        ))
+    } else if (sum(lapply(combination, length) > 1) == 1) {
+        loop_on <- names(which(lapply(combination, length) > 1))
+        # if list is numerical, sort it
+        if (any(sapply(combination[[loop_on]], is.numeric))) {
+            combination[[loop_on]] <- sort(combination[[loop_on]])
+        }
+        ref_model <- list()
+        loop_model <- list()
 
-    # using names would be too long, we use number of x variables in formula
-    if (column == "formulas") {
-        loop_list <- sapply(lapply(loop_list, all.vars), length)
+        for (name in names(combination) ) {
+            if (name == loop_on) {
+                ref_model[[name]] <- combination[[name]][1]
+                loop_model[[name]] <- combination[[loop_on]][-1]
+            } else {
+                ref_model[[name]] <- combination[[name]]
+                loop_model[[name]] <- combination[[name]] 
+            }
+        }
+    } else {
+        loop_on <- "single_model"
+        ref_model <- NULL
+        loop_model <- combination
     }
 
-    # if list is numerical, sort it
-    if (any(sapply(loop_list, is.numeric))) {
-        loop_list <- sort(loop_list)
-    }
+    cli_alert_info(paste0("Plotting ", loop_on, "..."))
+
 
     for (bool in c(FALSE, TRUE)) {
         if (bool == FALSE) {
@@ -112,60 +67,49 @@ for (column in names(param_grid)) {
 
         . <- suppressMessages(boxplot_compare_scores(
             parent_folder = file.path(RESULTS_PATH, SUBFOLDER), 
-            reference_model_path = paste0(
-                filename_sections[[1]], loop_list[1], filename_sections[[2]]), 
-            loop_prefix = filename_sections[[1]], 
-            loop_elements = loop_list[-1], 
-            loop_suffix = filename_sections[[2]], 
+            reference_model_combination = ref_model, 
+            loop_model_combination = loop_model, 
             k_fold = parameters$K_FOLDS, 
             metric = "MSE",
             subset_names = c("train", "val", "test"),
             xlabel = paste0(
-                "Effect of ", tolower(column),
-                ", compared to '", loop_list[1], "'"), 
+                "Effect of ", tolower(loop_on),
+                ", compared to '", ref_model[[loop_on]], "'"), 
             group_species = bool,
             species_names = parameters$Y_SPECIES,
             save_to = file.path(
                 FIGURES_PATH, SUBFOLDER,
-                paste0("boxplot_", tolower(column), sp, "_comparison.pdf"))
+                paste0("boxplot_", tolower(loop_on), sp, "_comparison.pdf"))
         ))
 
-        if (is.numeric(loop_list)) {
+        if (is.numeric(combination[[loop_on]]) | (loop_on == "HMSC_XFORMULAS")) {
             . <- suppressMessages(lineplot_model_scores(
                 parent_folder = file.path(RESULTS_PATH, SUBFOLDER), 
-                loop_prefix = filename_sections[[1]], 
-                loop_elements = if (column != "strategy") {
-                        loop_list
-                    } else {
-                        loop_list[-1]
-                    }, 
-                loop_suffix = filename_sections[[2]], 
+                loop_model_combination = combination, 
                 k_fold = parameters$K_FOLDS, 
                 metric = "MSE",
-                xlabel = paste0("Effect of ", tolower(column)," type on MSE"), 
+                xlabel = paste0("Effect of ", tolower(loop_on)," type on MSE"), 
                 ylabel = "Average score per species",
                 group_species = bool,
                 species_names = parameters$Y_SPECIES,
                 save_to = file.path(
                     FIGURES_PATH, SUBFOLDER,
-                    paste0("lineplot_", tolower(column), sp, "_scores.pdf"))
+                    paste0("lineplot_", tolower(loop_on), sp, "_scores.pdf"))
                 ))
         } else {
             . <- suppressMessages(dotwhisker_model_scores(
                 parent_folder = file.path(RESULTS_PATH, SUBFOLDER), 
-                loop_prefix = filename_sections[[1]], 
-                loop_elements = loop_list, 
-                loop_suffix = filename_sections[[2]], 
+                loop_model_combination = combination, 
                 k_fold = parameters$K_FOLDS, 
                 metric = "MSE",
                 xlabel = paste0(
-                    "Estimated MSE coefficient relative to '", loop_list[1], "'"),
-                ylabel = paste0("Effect of ", tolower(column)," type on MSE"),
+                    "Estimated MSE coefficient relative to '", ref_model[[loop_on]], "'"),
+                ylabel = paste0("Effect of ", tolower(loop_on)," type on MSE"),
                 group_species = bool,
                 species_names = parameters$Y_SPECIES,
                 save_to = file.path(
                     FIGURES_PATH, SUBFOLDER,
-                    paste0("dotwhisker_", tolower(column), sp, "_scores.pdf")),
+                    paste0("dotwhisker_", tolower(loop_on), sp, "_scores.pdf")),
             ))
         }
 
@@ -173,20 +117,17 @@ for (column in names(param_grid)) {
 
     . <- suppressMessages(boxplot_sp_improvements(
         parent_folder = file.path(RESULTS_PATH, SUBFOLDER),
-        reference_model_path = paste0(
-                filename_sections[[1]], loop_list[1], filename_sections[[2]]), 
-        loop_prefix = filename_sections[[1]], 
-        loop_elements = loop_list[-1], 
-        loop_suffix = filename_sections[[2]], 
+        reference_model_combination = ref_model, 
+        loop_model_combination = loop_model, 
         k_fold = parameters$K_FOLDS, 
         metric = "MSE",
         xlabel = paste0(
-                "Effect of ", tolower(column),
-                ", compared to '", loop_list[1], "'"), 
+                "Effect of ", tolower(loop_on),
+                ", compared to '", ref_model[[loop_on]], "'"), 
         subset_names = c("train", "val", "test"),
         proportion = 1/100,
         save_to = file.path(
             FIGURES_PATH, SUBFOLDER,
-            paste0("improvement_", tolower(column), sp, "_scores.pdf"))
+            paste0("improvement_", tolower(loop_on), sp, "_scores.pdf"))
     ))
 }

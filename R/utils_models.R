@@ -22,6 +22,47 @@ source(here::here("data/config/config.R")) # Import global parameters
 
 
 ##### Functions ##### ---------------------------------------------------------
+# A function that takes parameters and makes the path to a folder's run.
+# ARGS:
+#   - folder: a string.
+#   - combination: a list of parameters.
+#   - k_fold: a numeric.
+make_run_path <- function(folder, combination, k_fold) {
+    r_effect <- combination$R_EFFECTS
+    strategy <- combination$STRATEGIES
+    n_new_samples <- combination$NEW_SAMPLE_SIZES
+    train_size <- combination$TRAIN_SIZES
+    x_variables <- combination$HMSC_XFORMULAS
+        
+    # if strategy is none, overwrite n_new_samples to avoid errors
+    if ((strategy == "none") & (n_new_samples != 0)) {
+        cli_alert_warning(paste0(
+            "Strategy is 'none' but n_new_samples is '", n_new_samples, "'.",
+            " Overwriting with n_new_samples = '0' to avoid errors."))
+        n_new_samples <- 0
+    }
+    # if n_new_samples is 0, no need to apply a strategy, use "none"
+    if ((n_new_samples == 0) & (strategy != "none")) {
+        cli_alert_warning(paste0(
+            "n_new_samples is '0' but strategy is '", strategy, "'.",
+            " Overwriting with strategy = 'none' to avoid errors."))
+        strategy <- 'none'
+    }
+
+    run_path <- file.path(
+        folder, paste0(
+            "model_random-", r_effect,
+            "_strategy-", strategy,
+            "_new-samples-", n_new_samples,
+            "_training-size-", train_size,
+            "_n-variables-", lapply(lapply(x_variables, all.vars), length),
+            "_k", k_fold
+        )
+    )
+    
+    return(run_path)
+}
+
 # A function to turn lists of lists into a dataframe with combinations as rows.
 # ARGS:
 #   - combinations: a list of lists containing elements 
@@ -406,7 +447,7 @@ analyses_hmsc <- function(
 #   - xlabel: a string. The label for the x-axis of the plot 
 #       (default is "Model type").
 #   - sp: a string. The name of a species (in df) to plot.
-map_results_hmsc <- function(
+LEGACY_map_results_hmsc <- function(
         df,
         x_cols,
         parent_folder, 
@@ -823,26 +864,21 @@ load_metric_scores <- function(run_path, subset_name, metric) {
 # ARGS:
 #   - parent_folder: a string. 
 #       Path to parent of subfolders containing `{subset_name}_scores.csv`.
-#   - reference_model_path: a string. 
-#       Path to a folder containing of a reference model
-#       (parent_folder goes before, k_fold number goes at the end).
-#   - loop_prefix: a string. The prefix of the subfolders names.
-#   - loop_elements: a list of strings. Middle elements for subfolders names.
-#   - loop_suffix: a string. The suffix of the subfolders names.
+#   - reference_model_combination: a list of single parameters. 
+#   - loop_model_combination: a list of parameters (single, 
+#       except one parameter, that is a vector of several elements). 
 #   - k_fold: a numeric. The number of cross-validation subsets to make. 
-#       Goes after suffix and reference_model_path .
 #   - metric: a string. Metric to extract from file (MSE, RMSE, AUC or TjuR2).
 #   - subset_names: a list string. Usually c("train", "val", "test").
 load_reference_and_other_scores <- function(
-        parent_folder, reference_model_path, loop_prefix, loop_elements,
-        loop_suffix, k_fold, metric, subset_names) {
-
+        parent_folder, reference_model_combination, loop_model_combination,
+        k_fold, metric, subset_names) {
     cli_alert_info("Loading base results...")
     ref_scores <- list()
     for (subset_name in subset_names) {
         ref_scores[[subset_name]] <- lapply(seq(k_fold), function(k) {
-            run_path <- file.path(
-                parent_folder, paste0(reference_model_path, k))
+            run_path <- make_run_path(
+                parent_folder, reference_model_combination, k)
             load_metric_scores(run_path, subset_name, metric)
         })
     }
@@ -851,13 +887,19 @@ load_reference_and_other_scores <- function(
     other_scores <- list()
     for (subset_name in subset_names) {
         other_scores[[subset_name]] <- list()
-        for (loop_element in loop_elements) {
+        run_paths <- make_run_path(parent_folder, loop_model_combination, "")
+        loop_elements <- loop_model_combination[[names(which(lapply(loop_model_combination, length) > 1))]]
+
+        for (i in 1:length(run_paths)) {
+            loop_element <- loop_elements[i]
+            if (is.list(loop_element)) {
+                loop_element <- length(all.vars(loop_element[[1]]))
+            }
+            
             other_scores[[subset_name]][[loop_element]] <- lapply(
                 seq(k_fold), function(k) {
-                    run_path <- file.path(
-                        parent_folder, 
-                        paste0(loop_prefix, loop_element, loop_suffix, k))
-                    load_metric_scores(run_path, subset_name, metric)
+                    local_run_path <- paste0(run_paths[i], k)
+                    load_metric_scores(local_run_path, subset_name, metric)
                 }
             )
         }
@@ -871,14 +913,10 @@ load_reference_and_other_scores <- function(
 # ARGS:
 #   - parent_folder: a string. 
 #       Path to parent of subfolders containing `{subset_name}_scores.csv`.
-#   - reference_model_path: a string. 
-#       Path to a folder containing of a reference model
-#       (parent_folder goes before, k_fold number goes at the end).
-#   - loop_prefix: a string. The prefix of the subfolders names.
-#   - loop_elements: a list of strings. Middle elements for subfolders names.
-#   - loop_suffix: a string. The suffix of the subfolders names.
+#   - reference_model_combination: a list of single parameters. 
+#   - loop_model_combination: a list of parameters (single, 
+#       except one parameter, that is a vector of several elements). 
 #   - k_fold: a numeric. The number of cross-validation subsets to make. 
-#       Goes after suffix and reference_model_path .
 #   - metric: a string. Metric to extract from file (MSE, RMSE, AUC or TjuR2).
 #   - subset_names: a list string. Usually c("train", "val", "test").
 #   - group_species: whether to take the mean 
@@ -887,14 +925,13 @@ load_reference_and_other_scores <- function(
 #   - species_names: names of species in CSV 
 #       (rownames are not available from csvs).
 compute_score_diffs <- function(
-        parent_folder, reference_model_path, loop_prefix, loop_elements,
-        loop_suffix, k_fold, metric = "MSE",
-        subset_names = c("train", "val", "test"),
+        parent_folder, reference_model_combination, loop_model_combination, 
+        k_fold, metric = "MSE", subset_names = c("train", "val", "test"),
         group_species = TRUE, species_names = NULL) {
 
     loaded <- load_reference_and_other_scores(
-        parent_folder, reference_model_path, loop_prefix, loop_elements,
-        loop_suffix, k_fold, metric, subset_names)
+        parent_folder, reference_model_combination, loop_model_combination, 
+        k_fold, metric, subset_names)
     ref_scores <- loaded$ref_scores
     other_scores <- loaded$other_scores
 
@@ -911,11 +948,16 @@ compute_score_diffs <- function(
         }
     }
 
+    loop_elements <- loop_model_combination[[names(which(lapply(loop_model_combination, length) > 1))]]
     scores_df <- tibble()
     raw_diffs_df <- tibble()
 
     for (subset_name in subset_names) {
         for (loop_element in loop_elements) {
+
+            if (is_formula(loop_element)) {
+                loop_element <- length(all.vars(loop_element))
+            }
 
             # (k_fold x species) matrix of raw differences before any
             # averaging, so both fold- and species-level variability remain
@@ -1007,14 +1049,10 @@ compute_score_diffs <- function(
 # ARGS:
 #   - parent_folder: a string. 
 #       Path to parent of subfolders containing `{subset_name}_scores.csv`.
-#   - reference_model_path: a string. 
-#       Path to a folder containing of a reference model
-#       (parent_folder goes before, k_fold number goes at the end).
-#   - loop_prefix: a string. The prefix of the subfolders names.
-#   - loop_elements: a list of strings. Middle elements for subfolders names.
-#   - loop_suffix: a string. The suffix of the subfolders names.
+#   - reference_model_combination: a list of single parameters. 
+#   - loop_model_combination: a list of parameters (single, 
+#       except one parameter, that is a vector of several elements).
 #   - k_fold: a numeric. The number of cross-validation subsets to make. 
-#       Goes after suffix and reference_model_path .
 #   - metric: a string. Metric to extract from file (MSE, RMSE, AUC or TjuR2).
 #   - subset_names: a list string. Usually c("train", "val", "test").
 #   - species_names: names of species in CSV 
@@ -1022,14 +1060,13 @@ compute_score_diffs <- function(
 #   - proportion: a numeric between 0 and 1. The threshold to count a species
 #       score as improved. 
 compute_number_of_improvements <- function(
-        parent_folder, reference_model_path, loop_prefix, loop_elements,
-        loop_suffix, k_fold, metric = "MSE",
-        subset_names = c("train", "val", "test"),
+        parent_folder, reference_model_combination, loop_model_combination, 
+        k_fold, metric = "MSE", subset_names = c("train", "val", "test"),
         species_names = NULL, proportion = 1/100) {
 
     loaded <- load_reference_and_other_scores(
-        parent_folder, reference_model_path, loop_prefix, loop_elements,
-        loop_suffix, k_fold, metric, subset_names)
+        parent_folder, reference_model_combination, loop_model_combination, 
+        k_fold, metric, subset_names)
     ref_scores <- loaded$ref_scores
     other_scores <- loaded$other_scores
 
@@ -1044,10 +1081,15 @@ compute_number_of_improvements <- function(
         ))
     }
 
+    loop_elements <- loop_model_combination[[names(which(lapply(loop_model_combination, length) > 1))]]
     prop_diffs_df <- tibble()
 
     for (subset_name in subset_names) {
         for (loop_element in loop_elements) {
+
+            if (is_formula(loop_element)) {
+                loop_element <- length(all.vars(loop_element))
+            }
 
             # (k_fold x species) matrix of raw differences before any
             # averaging, so both fold- and species-level variability remain
@@ -1103,9 +1145,8 @@ compute_number_of_improvements <- function(
 # ARGS:
 #   - parent_folder: a string. 
 #       Path to parent of subfolders containing `{subset_name}_scores.csv`.
-#   - loop_prefix: a string. The prefix of the subfolders names.
-#   - loop_elements: a list of strings. Middle elements for subfolders names.
-#   - loop_suffix: a string. The suffix of the subfolders names.
+#   - loop_model_combination: a list of parameters (single, 
+#       except one parameter, that is a vector of several elements).
 #   - k_fold: a numeric. The number of cross-validation subsets to make. 
 #       Goes after suffix.
 #   - xlabel: a string. The xlabel for the plot (default is "Model type").
@@ -1121,9 +1162,7 @@ compute_number_of_improvements <- function(
 #       If NULL, does not save pdf.
 barplot_raw_scores <- function(
         parent_folder,
-        loop_prefix,
-        loop_elements,
-        loop_suffix,
+        loop_model_combination,
         k_fold,
         xlabel = "Model type",
         ylabel = "Average Score",
@@ -1134,12 +1173,18 @@ barplot_raw_scores <- function(
         save_to = NULL) {
 
     cli_alert_info("Fetching scores...")
+
+    run_paths <- make_run_path(parent_folder, loop_model_combination, "")
+    loop_elements <- loop_model_combination[[names(which(lapply(loop_model_combination, length) > 1))]]
     scores_df <- data.frame()
     for (k in seq(k_fold)) {
-        for (loop_element in loop_elements) {
-            run_path <- file.path(
-                parent_folder, 
-                paste0(loop_prefix, loop_element, loop_suffix, k))
+        for (i in 1:length(run_paths)) {
+            run_path <- paste0(run_paths[i], k)
+            loop_element <- loop_elements[i]
+
+            if (is.list(loop_element)) {
+                loop_element <- length(all.vars(loop_element[[1]]))
+            }
 
             for (subset_name in subset_names) {
                 local_csv <- load_metric_scores(
@@ -1216,16 +1261,22 @@ barplot_raw_scores <- function(
             "SD and mean computed per k_fold across k_fold, per species.")
     }
 
-    format_prefix <- sub("n-variables", "n variables", sub("training-size", "training size", sub("new-samples", "new samples", loop_prefix)))
-    format_prefix <- paste(sub("-", "=", strsplit(substring(format_prefix, 7, nchar(format_prefix)-1), "_")[[1]], fixed = TRUE), collapse = ", ")
+    model_type <- ""
+    temp_comb <- loop_model_combination
+    temp_comb$HMSC_XFORMULAS <- lapply(lapply(
+        loop_model_combination$HMSC_XFORMULAS, all.vars), length)
+    for (param in names(temp_comb)) {
+        if (length(temp_comb[[param]]) > 1) {
+            model_type <- paste0(
+                model_type, tolower(param), "=see x-axis, ")
+        } else {
+            model_type <- paste0(
+                model_type, tolower(param), "=", temp_comb[[param]], ", ")
+        }
+    }
+    model_type <- paste0(substr(model_type, 1, nchar(model_type)-3), ".")
 
-
-    format_suffix <- sub("n-variables", "n variables", sub("training-size", "training size", sub("new-samples", "new samples", loop_suffix)))
-    format_suffix <- paste(sub("-", "=", strsplit(substring(format_suffix, 1, nchar(format_suffix)-2), "_")[[1]], fixed = TRUE), collapse = ", ")
-
-    bottom_caption <- paste0(
-        bottom_caption,
-        "\nModel type: ", format_prefix,": x-value", format_suffix, ".")
+    bottom_caption <- paste0(bottom_caption, "\nModel type: ", model_type)
 
     p <- p + 
         labs(caption = bottom_caption)
@@ -1253,14 +1304,10 @@ barplot_raw_scores <- function(
 # ARGS:
 #   - parent_folder: a string. 
 #       Path to parent of subfolders containing `{subset_name}_scores.csv`.
-#   - reference_model_path: a string. 
-#       Path to a folder containing of a reference model
-#       (parent_folder goes before, k_fold number goes at the end).
-#   - loop_prefix: a string. The prefix of the subfolders names.
-#   - loop_elements: a list of strings. Middle elements for subfolders names.
-#   - loop_suffix: a string. The suffix of the subfolders names.
+#   - reference_model_combination: a list of single parameters. 
+#   - loop_model_combination: a list of parameters (single, 
+#       except one parameter, that is a vector of several elements).
 #   - k_fold: a numeric. The number of cross-validation subsets to make. 
-#       Goes after suffix and reference_model_path .
 #   - metric: a string. Metric to extract from file (MSE, RMSE, AUC or TjuR2).
 #   - subset_names: a list string. Usually c("train", "val", "test").
 #   - xlabel: a string. The xlabel for the plot (default is "Effect").
@@ -1273,10 +1320,8 @@ barplot_raw_scores <- function(
 #       If NULL, does not save pdf.
 boxplot_compare_scores <- function(
         parent_folder,
-        reference_model_path,
-        loop_prefix,
-        loop_elements,
-        loop_suffix,
+        reference_model_combination,
+        loop_model_combination,
         k_fold,
         metric = "MSE",
         subset_names = c("train", "val", "test"),
@@ -1286,9 +1331,8 @@ boxplot_compare_scores <- function(
         save_to = NULL) {
 
     diffs <- compute_score_diffs(
-        parent_folder, reference_model_path, loop_prefix, loop_elements,
-        loop_suffix, k_fold, metric, subset_names, group_species, 
-        species_names)
+        parent_folder, reference_model_combination, loop_model_combination,
+        k_fold, metric, subset_names, group_species, species_names)
     scores_df <- diffs$summary
     raw_diffs_df <- diffs$raw_diffs
 
@@ -1296,8 +1340,8 @@ boxplot_compare_scores <- function(
     refs_list <- list()
     for (subset_name in subset_names) {
         for (k in 1:k_fold) {
-            run_path <- file.path(
-            parent_folder, paste0(reference_model_path, k))
+            run_path <- make_run_path(
+                parent_folder, reference_model_combination, k)
             refs <- load_metric_scores(run_path, subset_name, metric)
 
             refs_list[[length(refs_list) + 1]] <- data.frame(
@@ -1320,7 +1364,7 @@ boxplot_compare_scores <- function(
             summarise(mean_score = mean(scores, na.rm = TRUE), .groups = "drop")
     }
 
-
+    
     # just to be sure
     if (!group_species) {
         scores_df <- scores_df |> 
@@ -1338,20 +1382,30 @@ boxplot_compare_scores <- function(
             "Distribution of per-fold differences across k_fold, per species.")
     }
 
-    format_reference_path <- sub("n-variables", "n variables", sub("training-size", "training size", sub("new-samples", "new samples", reference_model_path)))
-    format_reference_path <- paste(sub("-", "=", strsplit(substring(format_reference_path, 7, nchar(format_reference_path)-2), "_")[[1]], fixed = TRUE), collapse = ", ")
-
-    format_prefix <- sub("n-variables", "n variables", sub("training-size", "training size", sub("new-samples", "new samples", loop_prefix)))
-    format_prefix <- paste(sub("-", "=", strsplit(substring(format_prefix, 7, nchar(format_prefix)-1), "_")[[1]], fixed = TRUE), collapse = ", ")
-
-
-    format_suffix <- sub("n-variables", "n variables", sub("training-size", "training size", sub("new-samples", "new samples", loop_suffix)))
-    format_suffix <- paste(sub("-", "=", strsplit(substring(format_suffix, 1, nchar(format_suffix)-2), "_")[[1]], fixed = TRUE), collapse = ", ")
+    ref_type <- ""
+    model_type <- ""
+    temp_comb <- loop_model_combination
+    temp_comb$HMSC_XFORMULAS <- lapply(lapply(
+        loop_model_combination$HMSC_XFORMULAS, all.vars), length)
+    for (param in names(temp_comb)) {
+        if (length(temp_comb[[param]]) > 1) {
+            model_type <- paste0(
+                model_type, tolower(param), "=see x-axis, ")
+        } else {
+            model_type <- paste0(
+                model_type, tolower(param), "=", temp_comb[[param]], ", ")
+        }
+        ref_type <- paste0(
+                ref_type, tolower(param), "=", 
+                reference_model_combination[[param]], ", ")
+    }
+    model_type <- paste0(substr(model_type, 1, nchar(model_type)-3), ".")
+    ref_type <- paste0(substr(ref_type, 1, nchar(ref_type)-3), ".")
 
     bottom_caption <- paste0(
         bottom_caption,
-        "\nReference: ", format_reference_path, 
-        ".\nCompared with: ", format_prefix,": x-value", format_suffix, ".")
+        "\nReference: ", ref_type, 
+        ".\nCompared with: ", model_type)
     
     p <- ggplot(
             raw_diffs_df, 
@@ -1403,14 +1457,10 @@ boxplot_compare_scores <- function(
 # ARGS:
 #   - parent_folder: a string. 
 #       Path to parent of subfolders containing `{subset_name}_scores.csv`.
-#   - reference_model_path: a string. 
-#       Path to a folder containing of a reference model
-#       (parent_folder goes before, k_fold number goes at the end).
-#   - loop_prefix: a string. The prefix of the subfolders names.
-#   - loop_elements: a list of strings. Middle elements for subfolders names.
-#   - loop_suffix: a string. The suffix of the subfolders names.
+#   - reference_model_combination: a list of single parameters. 
+#   - loop_model_combination: a list of parameters (single, 
+#       except one parameter, that is a vector of several elements).
 #   - k_fold: a numeric. The number of cross-validation subsets to make. 
-#       Goes after suffix and reference_model_path .
 #   - metric: a string. Metric to extract from file (MSE, RMSE, AUC or TjuR2).
 #   - subset_names: a list string. Usually c("train", "val", "test").
 #   - xlabel: a string. The xlabel for the plot (default is "Model type").
@@ -1421,10 +1471,8 @@ boxplot_compare_scores <- function(
 #       If NULL, does not save pdf.
 boxplot_sp_improvements <- function(
         parent_folder,
-        reference_model_path,
-        loop_prefix,
-        loop_elements,
-        loop_suffix,
+        reference_model_combination,
+        loop_model_combination,
         k_fold,
         metric = "MSE",
         proportion = 1/100,
@@ -1434,10 +1482,8 @@ boxplot_sp_improvements <- function(
 
     diffs <- compute_number_of_improvements(
         parent_folder = parent_folder, 
-        reference_model_path = reference_model_path, 
-        loop_prefix = loop_prefix, 
-        loop_elements = loop_elements,
-        loop_suffix = loop_suffix, 
+        reference_model_combination = reference_model_combination, 
+        loop_model_combination = loop_model_combination, 
         k_fold = k_fold, 
         metric = metric,
         subset_names = subset_names,
@@ -1458,21 +1504,31 @@ boxplot_sp_improvements <- function(
  
     bottom_caption <- paste("Number of species per box:", n_species, ".")
     
-    format_reference_path <- sub("n-variables", "n variables", sub("training-size", "training size", sub("new-samples", "new samples", reference_model_path)))
-    format_reference_path <- paste(sub("-", "=", strsplit(substring(format_reference_path, 7, nchar(format_reference_path)-2), "_")[[1]], fixed = TRUE), collapse = ", ")
-
-    format_prefix <- sub("n-variables", "n variables", sub("training-size", "training size", sub("new-samples", "new samples", loop_prefix)))
-    format_prefix <- paste(sub("-", "=", strsplit(substring(format_prefix, 7, nchar(format_prefix)-1), "_")[[1]], fixed = TRUE), collapse = ", ")
-
-
-    format_suffix <- sub("n-variables", "n variables", sub("training-size", "training size", sub("new-samples", "new samples", loop_suffix)))
-    format_suffix <- paste(sub("-", "=", strsplit(substring(format_suffix, 1, nchar(format_suffix)-2), "_")[[1]], fixed = TRUE), collapse = ", ")
+    ref_type <- ""
+    model_type <- ""
+    temp_comb <- loop_model_combination
+    temp_comb$HMSC_XFORMULAS <- lapply(lapply(
+        loop_model_combination$HMSC_XFORMULAS, all.vars), length)
+    for (param in names(temp_comb)) {
+        if (length(temp_comb[[param]]) > 1) {
+            model_type <- paste0(
+                model_type, tolower(param), "=see x-axis, ")
+        } else {
+            model_type <- paste0(
+                model_type, tolower(param), "=", temp_comb[[param]], ", ")
+        }
+        ref_type <- paste0(
+                ref_type, tolower(param), "=", 
+                reference_model_combination[[param]], ", ")
+    }
+    model_type <- paste0(substr(model_type, 1, nchar(model_type)-3), ".")
+    ref_type <- paste0(substr(ref_type, 1, nchar(ref_type)-3), ".")
 
     bottom_caption <- paste0(
         bottom_caption,
-        "\nReference: ", format_reference_path, 
-        ".\nCompared with: ", format_prefix,": x-value", format_suffix, ".")
-
+        "\nReference: ", ref_type, 
+        ".\nCompared with: ", model_type)
+    
     p <- p +
         geom_boxplot(
             position = position_dodge(width = 0.75), 
@@ -1504,13 +1560,10 @@ boxplot_sp_improvements <- function(
 # ARGS:
 #   - parent_folder: a string. 
 #       Path to parent of subfolders containing `{subset_name}_scores.csv`.
-#   - save_to: a string. Path which should end with .pdf. 
 #       If NULL, does not save pdf.
-#   - loop_prefix: a string. The prefix of the subfolders names.
-#   - loop_elements: a list of strings. Middle elements for subfolders names.
-#   - loop_suffix: a string. The suffix of the subfolders names.
+#   - loop_model_combination: a list of parameters (single, 
+#       except one parameter, that is a vector of several elements).
 #   - k_fold: a numeric. The number of cross-validation subsets to make. 
-#       Goes after suffix and reference_model_path .
 #   - metric: a string. Metric to extract from file (MSE, RMSE, AUC or TjuR2).
 #   - subset_names: a list string. Usually c("train", "val", "test").
 #   - xlabel: a string. The xlabel for the plot (default is "Model type").
@@ -1520,11 +1573,10 @@ boxplot_sp_improvements <- function(
 #       only accross k_folds (FALSE).
 #   - species_names: names of species in CSV 
 #       (rownames are not available from csvs).
+#   - save_to: a string. Path which should end with .pdf. 
 dotwhisker_model_scores <- function(
         parent_folder,
-        loop_prefix,
-        loop_elements,
-        loop_suffix,
+        loop_model_combination,
         k_fold,
         metric,
         subset_names = c("train", "val", "test"),
@@ -1533,21 +1585,26 @@ dotwhisker_model_scores <- function(
         group_species = TRUE,
         species_names = NULL,
         save_to = NULL) {
-
+            
+    loop_elements <- loop_model_combination[[names(which(lapply(loop_model_combination, length) > 1))]]
     if (is.numeric(loop_elements)) {
         stop(paste0(
             "This function was not made to handle factors in 'loop_elements',",
             " not numerics. For numerics, Try barplot_raw_scores() with ",
             "`barplot = FALSE` instead."))
     }
-    
+
+    run_paths <- make_run_path(parent_folder, loop_model_combination, "")
     cli_alert_info("Fetching scores...")
     scores_df <- data.frame()
     for (k in seq(k_fold)) {
-        for (loop_element in loop_elements) {
-            run_path <- file.path(
-                parent_folder, 
-                paste0(loop_prefix, loop_element, loop_suffix, k))
+        for (i in 1:length(run_paths)) {
+            run_path <- paste0(run_paths[i], k)
+            loop_element <- loop_elements[i]
+
+            if (is.list(loop_element)) {
+                loop_element <- length(all.vars(loop_element[[1]]))
+            }
 
             for (subset_name in subset_names) {
                 local_csv <- suppressMessages(load_metric_scores(
@@ -1619,17 +1676,23 @@ dotwhisker_model_scores <- function(
             "k_fold mean + 95% CI.")
     }
 
-    format_prefix <- sub("n-variables", "n variables", sub("training-size", "training size", sub("new-samples", "new samples", loop_prefix)))
-    format_prefix <- paste(sub("-", "=", strsplit(substring(format_prefix, 7, nchar(format_prefix)-1), "_")[[1]], fixed = TRUE), collapse = ", ")
+    model_type <- ""
+    temp_comb <- loop_model_combination
+    temp_comb$HMSC_XFORMULAS <- lapply(lapply(
+        loop_model_combination$HMSC_XFORMULAS, all.vars), length)
+    for (param in names(temp_comb)) {
+        if (length(temp_comb[[param]]) > 1) {
+            model_type <- paste0(
+                model_type, tolower(param), "=see x-axis, ")
+        } else {
+            model_type <- paste0(
+                model_type, tolower(param), "=", temp_comb[[param]], ", ")
+        }
+    }
+    model_type <- paste0(substr(model_type, 1, nchar(model_type)-3), ".")
 
+    bottom_caption <- paste0(bottom_caption, "\nModel type: ", model_type)
 
-    format_suffix <- sub("n-variables", "n variables", sub("training-size", "training size", sub("new-samples", "new samples", loop_suffix)))
-    format_suffix <- paste(sub("-", "=", strsplit(substring(format_suffix, 1, nchar(format_suffix)-2), "_")[[1]], fixed = TRUE), collapse = ", ")
-
-    bottom_caption <- paste0(
-        bottom_caption,
-        "\nModel type: ", format_prefix,": x-value", format_suffix, ".")
-    
     p <- dwplot(model_list, 
                 effects = "fixed",
                 model_order = rev(subset_names),
@@ -1661,11 +1724,9 @@ dotwhisker_model_scores <- function(
 # ARGS:
 #   - parent_folder: a string. 
 #       Path to parent of subfolders containing `{subset_name}_scores.csv`.
-#   - loop_prefix: a string. The prefix of the subfolders names.
-#   - loop_elements: a list of strings. Middle elements for subfolders names.
-#   - loop_suffix: a string. The suffix of the subfolders names.
+#   - loop_model_combination: a list of parameters (single, 
+#       except one parameter, that is a vector of several elements).
 #   - k_fold: a numeric. The number of cross-validation subsets to make. 
-#       Goes after suffix and reference_model_path .
 #   - metric: a string. Metric to extract from file (MSE, RMSE, AUC or TjuR2).
 #   - subset_names: a list string. Usually c("train", "val", "test").
 #   - xlabel: a string. The xlabel for the plot (default is "Model type").
@@ -1679,9 +1740,7 @@ dotwhisker_model_scores <- function(
 #       If NULL, does not save pdf.
 lineplot_model_scores <- function(
         parent_folder,
-        loop_prefix,
-        loop_elements,
-        loop_suffix,
+        loop_model_combination,
         k_fold,
         metric,
         xlabel = "Model type",
@@ -1691,13 +1750,19 @@ lineplot_model_scores <- function(
         subset_names = c("train", "val", "test"),
         save_to = NULL) {
     
+    loop_elements <- loop_model_combination[[names(which(lapply(loop_model_combination, length) > 1))]]
+    run_paths <- make_run_path(parent_folder, loop_model_combination, "")
+
     cli_alert_info("Fetching scores...")
     scores_df <- data.frame()
     for (k in seq(k_fold)) {
-        for (loop_element in loop_elements) {
-            run_path <- file.path(
-                parent_folder, 
-                paste0(loop_prefix, loop_element, loop_suffix, k))
+        for (i in 1:length(run_paths)) {
+            run_path <- paste0(run_paths[i], k)
+            loop_element <- loop_elements[i]
+
+            if (is.list(loop_element)) {
+                loop_element <- length(all.vars(loop_element[[1]]))
+            }
 
             for (subset_name in subset_names) {
                 local_csv <- suppressMessages(load_metric_scores(
@@ -1798,16 +1863,22 @@ lineplot_model_scores <- function(
             "k_fold mean + 95% CI.")
     }
 
-    format_prefix <- sub("n-variables", "n variables", sub("training-size", "training size", sub("new-samples", "new samples", loop_prefix)))
-    format_prefix <- paste(sub("-", "=", strsplit(substring(format_prefix, 7, nchar(format_prefix)-1), "_")[[1]], fixed = TRUE), collapse = ", ")
+    model_type <- ""
+    temp_comb <- loop_model_combination
+    temp_comb$HMSC_XFORMULAS <- lapply(lapply(
+        loop_model_combination$HMSC_XFORMULAS, all.vars), length)
+    for (param in names(temp_comb)) {
+        if (length(temp_comb[[param]]) > 1) {
+            model_type <- paste0(
+                model_type, tolower(param), "=see x-axis, ")
+        } else {
+            model_type <- paste0(
+                model_type, tolower(param), "=", temp_comb[[param]], ", ")
+        }
+    }
+    model_type <- paste0(substr(model_type, 1, nchar(model_type)-3), ".")
 
-
-    format_suffix <- sub("n-variables", "n variables", sub("training-size", "training size", sub("new-samples", "new samples", loop_suffix)))
-    format_suffix <- paste(sub("-", "=", strsplit(substring(format_suffix, 1, nchar(format_suffix)-2), "_")[[1]], fixed = TRUE), collapse = ", ")
-
-    bottom_caption <- paste0(
-        bottom_caption,
-        "\nModel type: ", format_prefix,": x-value", format_suffix, ".")
+    bottom_caption <- paste0(bottom_caption, "\nModel type: ", model_type)
 
     p <- p + 
         labs(caption = bottom_caption)
