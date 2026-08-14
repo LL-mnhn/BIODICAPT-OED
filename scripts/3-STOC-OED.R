@@ -53,8 +53,8 @@ NEW_POOL_SIZE <- 500 # Number of points from which we can pick for OED
 K_FOLDS <- 10
 
 ### MCMC
-NSAMPLES <- 5000 # mcmc will stop after saving that much samples
-THIN <- 2 # number of steps between each recording
+NSAMPLES <- 1500 # mcmc will stop after saving that much samples
+THIN <- 1 # number of steps between each recording
 NTRANSIENT <- 0.5*NSAMPLES*THIN # burn-in iterations
 NCHAINS <- 3
 
@@ -88,7 +88,7 @@ COMBINATIONS <- list(
     # Add random effects
     list(
         TRAIN_SIZES = c(125), 
-        R_EFFECTS = c("none", "units"), 
+        R_EFFECTS = c("none", "units", "spatial"), 
         STRATEGIES = c("none"),
         NEW_SAMPLE_SIZES = c(0),
         HMSC_XFORMULAS = c(
