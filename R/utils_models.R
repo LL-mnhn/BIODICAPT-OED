@@ -1441,23 +1441,27 @@ boxplot_compare_scores <- function(
 
     ref_type <- ""
     model_type <- ""
-    temp_comb <- loop_model_combination
-    temp_comb$HMSC_XFORMULAS <- lapply(lapply(
-        loop_model_combination$HMSC_XFORMULAS, all.vars), length)
-    for (param in names(temp_comb)) {
-        if (length(temp_comb[[param]]) > 1) {
+    temp_loop <- loop_model_combination
+    temp_loop$HMSC_XFORMULAS <- lapply(lapply(
+        temp_loop$HMSC_XFORMULAS, all.vars), length)
+    temp_ref <- reference_model_combination
+    temp_ref$HMSC_XFORMULAS <- lapply(lapply(
+        temp_ref$HMSC_XFORMULAS, all.vars), length)
+
+    for (param in names(temp_loop)) {
+        if (length(temp_loop[[param]]) > 1) {
             model_type <- paste0(
                 model_type, tolower(param), "=see x-axis, ")
         } else {
             model_type <- paste0(
-                model_type, tolower(param), "=", temp_comb[[param]], ", ")
+                model_type, tolower(param), "=", temp_loop[[param]], ", ")
         }
         ref_type <- paste0(
-                ref_type, tolower(param), "=", 
-                reference_model_combination[[param]], ", ")
+                ref_type, tolower(param), "=", temp_ref[[param]], ", ")
     }
-    model_type <- paste0(substr(model_type, 1, nchar(model_type)-3), ".")
-    ref_type <- paste0(substr(ref_type, 1, nchar(ref_type)-3), ".")
+
+    model_type <- paste0(substr(model_type, 1, nchar(model_type)-2), ".")
+    ref_type <- paste0(substr(ref_type, 1, nchar(ref_type)-2), ".")
 
     bottom_caption <- paste0(
         bottom_caption,
@@ -1565,23 +1569,27 @@ boxplot_sp_improvements <- function(
     
     ref_type <- ""
     model_type <- ""
-    temp_comb <- loop_model_combination
-    temp_comb$HMSC_XFORMULAS <- lapply(lapply(
-        loop_model_combination$HMSC_XFORMULAS, all.vars), length)
-    for (param in names(temp_comb)) {
-        if (length(temp_comb[[param]]) > 1) {
+    temp_loop <- loop_model_combination
+    temp_loop$HMSC_XFORMULAS <- lapply(lapply(
+        temp_loop$HMSC_XFORMULAS, all.vars), length)
+    temp_ref <- reference_model_combination
+    temp_ref$HMSC_XFORMULAS <- lapply(lapply(
+        temp_ref$HMSC_XFORMULAS, all.vars), length)
+
+    for (param in names(temp_loop)) {
+        if (length(temp_loop[[param]]) > 1) {
             model_type <- paste0(
                 model_type, tolower(param), "=see x-axis, ")
         } else {
             model_type <- paste0(
-                model_type, tolower(param), "=", temp_comb[[param]], ", ")
+                model_type, tolower(param), "=", temp_loop[[param]], ", ")
         }
         ref_type <- paste0(
-                ref_type, tolower(param), "=", 
-                reference_model_combination[[param]], ", ")
+                ref_type, tolower(param), "=", temp_ref[[param]], ", ")
     }
-    model_type <- paste0(substr(model_type, 1, nchar(model_type)-3), ".")
-    ref_type <- paste0(substr(ref_type, 1, nchar(ref_type)-3), ".")
+
+    model_type <- paste0(substr(model_type, 1, nchar(model_type)-2), ".")
+    ref_type <- paste0(substr(ref_type, 1, nchar(ref_type)-2), ".")
 
     bottom_caption <- paste0(
         bottom_caption,
