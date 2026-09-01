@@ -84,7 +84,7 @@ It is undoubtebly the most widely used JSDMin the last years. To summarise its p
 
 Only HMSC has been implemented into our code for now. GJAM is under consideration, as well as other SDMs: RF, SSDM, deep-SDMs, ...
 
-↳ This section will be updated when results are available.
+↳ This section will be updated when new results are available.
 :::
 
 # Proof-of-concept
@@ -118,7 +118,7 @@ With this context in mind, here are their results:
 
 ### Our results
 ```{r}
-#| label: setup-and-compute
+#| label: Global setup
 #| echo: false
 #| warning: false
 renv::load(here::here())
@@ -138,135 +138,88 @@ SUBFOLDER <- "STOC-OED"
 parameters <- readRDS(here::here(
     file.path(RESULTS_PATH, SUBFOLDER, "parameters.rds")))
 COMBINATIONS <- parameters$COMBINATIONS
-param_grid <- build_param_grid(COMBINATIONS)
-
-##### Helper functions ##### --------------------------------------------------
-loop_selector <- function(grid, loop_on, base = parameters$BASE_COMBINATION){
-    # initialize base values
-    combination <- list(
-        train_size = base$TRAIN_SIZES,
-        r_effect = base$R_EFFECTS,
-        strategy = base$STRATEGIES[1],
-        formulas = base$HMSC_XFORMULAS,
-        n_new_samples = base$NEW_SAMPLE_SIZE[1]
-    )
-
-    # replace formulas by number of variables
-    combination$formulas <- lapply(
-            lapply(combination$formulas, all.vars), 
-        length)
-    
-    # if looping on strategies, change base new_sample_size
-    if (loop_on == "strategy") {
-        combination$n_new_samples <- base$NEW_SAMPLE_SIZE[2]
-    }
-
-    # if looping on new_samples, change base strategy
-    if (loop_on == "n_new_samples") {
-        combination$strategy <- base$STRATEGIES[2]
-    }
-
-    # replace single value by list to loop on
-    combination[[loop_on]] <- unique(param_grid[[loop_on]])
-
-    # a preffix, and a suffix in two parts
-    path_sections <- list("", "")
-    path_idx <- 1
-    parameter_names <- c(
-        "r_effect", "strategy", "n_new_samples", "train_size", "formulas")
-    path_names <- c(
-        "model_random-", "_strategy-", "_new-samples-", "_training-size-", 
-        "_n-variables-")
-
-    # when reaching vector of item in list, switch to next path section
-    for (p in seq_along(parameter_names)) {
-        if (length(combination[[parameter_names[p]]]) > 1) {
-            path_sections[[path_idx]] <- paste0(
-                path_sections[[path_idx]],
-                path_names[p]
-            )
-            path_idx <- path_idx + 1
-        } else {
-            path_sections[[path_idx]] <- paste0(
-                path_sections[[path_idx]],
-                path_names[p], combination[[parameter_names[p]]]
-            )
-        }
-    }
-    path_sections[[2]] <- paste0(path_sections[[2]], "_k")
-
-    return(path_sections)
-}
-
-##### Main ##### --------------------------------------------------------------
-filename_sections <- loop_selector(param_grid, COLUMN)
-loop_list <- unique(param_grid[[COLUMN]])
 ```
 
 ::: {.panel-tabset}
 #### Boxplot differences
-```{r, fig.dim=c(11, 6)}
-#| label: copy of fig3a
+```{r}
+#| label: Strategies setup
 #| echo: false
 #| warning: false
-. <- (boxplot_compare_scores(
-    parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)), 
-    reference_model_path = paste0(
-        filename_sections[[1]], loop_list[1], filename_sections[[2]]), 
-    loop_prefix = filename_sections[[1]], 
-    loop_elements = loop_list[-1], 
-    loop_suffix = filename_sections[[2]], 
+loop_on <- "STRATEGIES"
+combination <- COMBINATIONS[[4]]
+
+if (any(sapply(combination[[loop_on]], is.numeric))) {
+    combination[[loop_on]] <- sort(combination[[loop_on]])
+}
+ref_model <- list()
+loop_model <- list()
+
+for (name in names(combination) ) {
+    if (name == loop_on) {
+        ref_model[[name]] <- combination[[name]][1]
+        loop_model[[name]] <- combination[[loop_on]][-1]
+    } else {
+        ref_model[[name]] <- combination[[name]]
+        loop_model[[name]] <- combination[[name]] 
+    }
+}
+```
+
+
+```{r, fig.dim=c(11, 6)}
+#| label: Strategies boxplots
+#| echo: false
+#| warning: false
+. <- suppressMessages(boxplot_compare_scores(
+    parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)),
+    reference_model_combination = ref_model, 
+    loop_model_combination = loop_model, 
+    loop_on = loop_on,
     k_fold = parameters$K_FOLDS, 
     metric = "MSE",
     subset_names = c("train", "val", "test"),
     xlabel = paste0(
-        "Effect of ", tolower(COLUMN),
-        ", compared to '", loop_list[1], "'"), 
+        "Effect of ", tolower(loop_on),
+        ", compared to '", ref_model[[loop_on]], "'"), 
     group_species = TRUE,
-    species_names = parameters$Y_SPECIES,
-    save_to = NULL))
+    species_names = parameters$Y_SPECIES))
 ```
 
 #### Boxplot improvement
 ```{r, fig.dim=c(11, 6)}
-#| label: copy of fig3b
+#| label: Strategies boxplots bis
 #| echo: false
 #| warning: false
 . <- suppressMessages(boxplot_sp_improvements(
-    parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)), 
-    reference_model_path = paste0(
-            filename_sections[[1]], loop_list[1], filename_sections[[2]]), 
-    loop_prefix = filename_sections[[1]], 
-    loop_elements = loop_list[-1], 
-    loop_suffix = filename_sections[[2]], 
+    parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)),
+    reference_model_combination = ref_model, 
+    loop_model_combination = loop_model, 
+    loop_on = loop_on,
     k_fold = parameters$K_FOLDS, 
     metric = "MSE",
     xlabel = paste0(
-            "Effect of ", tolower(COLUMN),
-            ", compared to '", loop_list[1], "'"), 
+            "Effect of ", tolower(loop_on),
+            ", compared to '", ref_model[[loop_on]], "'"), 
     subset_names = c("train", "val", "test"),
-    proportion = 1/100,
-    save_to = NULL))
+    proportion = 1/100))
 ```
 
 #### Estimated effects
 ```{r, fig.dim=c(11, 6)}
-#| label: copy of fig3a bis
+#| label: Strategies dotwhisker
 #| echo: false
 #| warning: false
 #| output: true
 strat_stats <- suppressMessages(dotwhisker_model_scores(
-    parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)), 
-    save_to = NULL,
-    loop_prefix = filename_sections[[1]], 
-    loop_elements = loop_list, 
-    loop_suffix = filename_sections[[2]], 
+    parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)),
+    loop_model_combination = combination, 
+    loop_on = loop_on,
     k_fold = parameters$K_FOLDS, 
     metric = "MSE",
-    xlabel = "Difference in MSE", 
-    ylabel = paste0(
-        "Effect of ", tolower(COLUMN),
-        ", compared to '", loop_list[1], "'"),
+    xlabel = paste0(
+        "Estimated MSE coefficient relative to '", ref_model[[loop_on]], "'"),
+    ylabel = paste0("Effect of ", tolower(loop_on)," type on MSE"),
     group_species = TRUE,
     species_names = parameters$Y_SPECIES))
 ```
@@ -276,7 +229,7 @@ strat_stats <- suppressMessages(dotwhisker_model_scores(
 
 **Fitted model:**
 ```{r}
-#| label: strategy stats
+#| label: Strategies stats
 #| echo: false
 #| warning: false
 #| output: true
@@ -307,83 +260,90 @@ This is actually quite logical: the "SU" strategy adds training samples for whic
 ## Other results
 ### Training size
 ::: {.panel-tabset}
-```{r, fig.dim=c(11, 6)}
+```{r}
+#| label: Training sizes setup
 #| echo: false
 #| warning: false
-COLUMN <- "train_size"
-filename_sections <- loop_selector(param_grid, COLUMN)
-loop_list <- unique(param_grid[[COLUMN]])
-loop_list <- sort(loop_list)
+loop_on <- "TRAIN_SIZES"
+combination <- COMBINATIONS[[1]]
+
+if (any(sapply(combination[[loop_on]], is.numeric))) {
+    combination[[loop_on]] <- sort(combination[[loop_on]])
+}
+ref_model <- list()
+loop_model <- list()
+
+for (name in names(combination) ) {
+    if (name == loop_on) {
+        ref_model[[name]] <- combination[[name]][1]
+        loop_model[[name]] <- combination[[loop_on]][-1]
+    } else {
+        ref_model[[name]] <- combination[[name]]
+        loop_model[[name]] <- combination[[name]] 
+    }
+}
 ```
 
 #### Boxplot differences
 ```{r, fig.dim=c(11, 6)}
-#| label: training_size_1
+#| label: Training sizes boxplots
 #| echo: false
 #| warning: false
 . <- suppressMessages(boxplot_compare_scores(
     parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)), 
-    reference_model_path = paste0(
-        filename_sections[[1]], loop_list[1], filename_sections[[2]]), 
-    loop_prefix = filename_sections[[1]], 
-    loop_elements = loop_list[-1], 
-    loop_suffix = filename_sections[[2]], 
+    reference_model_combination = ref_model, 
+    loop_model_combination = loop_model, 
+    loop_on = loop_on,
     k_fold = parameters$K_FOLDS, 
     metric = "MSE",
     subset_names = c("train", "val", "test"),
     xlabel = paste0(
-        "Effect of ", tolower(COLUMN),
-        ", compared to '", loop_list[1], "'"), 
+        "Effect of ", tolower(loop_on),
+        ", compared to '", ref_model[[loop_on]], "'"), 
     group_species = TRUE,
-    species_names = parameters$Y_SPECIES,
-    save_to = NULL))
+    species_names = parameters$Y_SPECIES))
 ```
 
 #### Boxplot improvement
 ```{r, fig.dim=c(11, 6)}
-#| label: training_size_2
+#| label: Training sizes boxplots bis
 #| echo: false
 #| warning: false
 . <- suppressMessages(boxplot_sp_improvements(
-    parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)), 
-    reference_model_path = paste0(
-            filename_sections[[1]], loop_list[1], filename_sections[[2]]), 
-    loop_prefix = filename_sections[[1]], 
-    loop_elements = loop_list[-1], 
-    loop_suffix = filename_sections[[2]], 
+    parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)),
+    reference_model_combination = ref_model, 
+    loop_model_combination = loop_model, 
+    loop_on = loop_on,
     k_fold = parameters$K_FOLDS, 
     metric = "MSE",
     xlabel = paste0(
-            "Effect of ", tolower(COLUMN),
-            ", compared to '", loop_list[1], "'"), 
+            "Effect of ", tolower(loop_on),
+            ", compared to '", ref_model[[loop_on]], "'"), 
     subset_names = c("train", "val", "test"),
-    proportion = 1/100,
-    save_to = NULL))
+    proportion = 1/100))
 ```
 
 #### Estimated effects
 ```{r, fig.dim=c(11, 6)}
-#| label: training_size_3
+#| label: Training sizes dotwhiskers
 #| echo: false
 #| warning: false
 train_size_stats <- suppressMessages(lineplot_model_scores(
     parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)), 
-    loop_prefix = filename_sections[[1]], 
-    loop_elements = loop_list, 
-    loop_suffix = filename_sections[[2]], 
+    loop_model_combination = combination, 
+    loop_on = loop_on,
     k_fold = parameters$K_FOLDS, 
     metric = "MSE",
-    xlabel = paste0("Effect of ", tolower(COLUMN)," type on MSE"), 
+    xlabel = paste0("Effect of ", tolower(loop_on)," type on MSE"), 
     ylabel = "Average score per species",
     group_species = TRUE,
-    species_names = parameters$Y_SPECIES,
-    save_to = NULL))
+    species_names = parameters$Y_SPECIES))
 ```
 :::
 
 **Fitted model:**
 ```{r}
-#| label: training size stats
+#| label: Training sizes stats
 #| echo: false
 #| warning: false
 #| output: true
@@ -399,77 +359,84 @@ Over 100 samples, this effect is comparable in magnitude to the variance explain
 
 ### Number of new samples
 ::: {.panel-tabset}
-```{r, fig.dim=c(11, 6)}
+```{r}
+#| label: New sample sizes setup
 #| echo: false
 #| warning: false
-COLUMN <- "n_new_samples"
-filename_sections <- loop_selector(param_grid, COLUMN)
-loop_list <- unique(param_grid[[COLUMN]])
-loop_list <- sort(loop_list)
+loop_on <- "NEW_SAMPLE_SIZES"
+combination <- COMBINATIONS[[5]]
+
+if (any(sapply(combination[[loop_on]], is.numeric))) {
+    combination[[loop_on]] <- sort(combination[[loop_on]])
+}
+ref_model <- list()
+loop_model <- list()
+
+for (name in names(combination) ) {
+    if (name == loop_on) {
+        ref_model[[name]] <- combination[[name]][1]
+        loop_model[[name]] <- combination[[loop_on]][-1]
+    } else {
+        ref_model[[name]] <- combination[[name]]
+        loop_model[[name]] <- combination[[name]] 
+    }
+}
 ```
 
 #### Boxplot differences
 ```{r, fig.dim=c(11, 6)}
-#| label: new_samples_1
+#| label: New sample sizes boxplots
 #| echo: false
 #| warning: false
 . <- suppressMessages(boxplot_compare_scores(
     parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)), 
-    reference_model_path = paste0(
-        filename_sections[[1]], loop_list[1], filename_sections[[2]]), 
-    loop_prefix = filename_sections[[1]], 
-    loop_elements = loop_list[-1], 
-    loop_suffix = filename_sections[[2]], 
+    reference_model_combination = ref_model, 
+    loop_model_combination = loop_model, 
+    loop_on = loop_on,
     k_fold = parameters$K_FOLDS, 
     metric = "MSE",
     subset_names = c("train", "val", "test"),
     xlabel = paste0(
-        "Effect of ", tolower(COLUMN),
-        ", compared to '", loop_list[1], "'"), 
+        "Effect of ", tolower(loop_on),
+        ", compared to '", ref_model[[loop_on]], "'"), 
     group_species = TRUE,
-    species_names = parameters$Y_SPECIES,
-    save_to = NULL))
+    species_names = parameters$Y_SPECIES))
 ```
 
 #### Boxplot improvement
 ```{r, fig.dim=c(11, 6)}
-#| label: new_samples_2
+#| label: New sample sizes boxplots bis
 #| echo: false
 #| warning: false
 . <- suppressMessages(boxplot_sp_improvements(
-    parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)), 
-    reference_model_path = paste0(
-            filename_sections[[1]], loop_list[1], filename_sections[[2]]), 
-    loop_prefix = filename_sections[[1]], 
-    loop_elements = loop_list[-1], 
-    loop_suffix = filename_sections[[2]], 
+    parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)),
+    reference_model_combination = ref_model, 
+    loop_model_combination = loop_model, 
+    loop_on = loop_on,
     k_fold = parameters$K_FOLDS, 
     metric = "MSE",
     xlabel = paste0(
-            "Effect of ", tolower(COLUMN),
-            ", compared to '", loop_list[1], "'"), 
+            "Effect of ", tolower(loop_on),
+            ", compared to '", ref_model[[loop_on]], "'"), 
     subset_names = c("train", "val", "test"),
-    proportion = 1/100,
-    save_to = NULL))
+    proportion = 1/100))
 ```
 
 #### Estimated effects
 ```{r, fig.dim=c(11, 6)}
-#| label: new_samples_3
+#| label: New sample sizes lineplot
 #| echo: false
 #| warning: false
 new_sample_stats <- suppressMessages(lineplot_model_scores(
     parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)), 
-    loop_prefix = filename_sections[[1]], 
-    loop_elements = loop_list, 
-    loop_suffix = filename_sections[[2]], 
+    loop_model_combination = combination, 
+    loop_on = loop_on,
     k_fold = parameters$K_FOLDS, 
     metric = "MSE",
-    xlabel = paste0("Effect of ", tolower(COLUMN)," type on MSE"), 
+    xlabel = paste0("Effect of ", tolower(loop_on)," type on MSE"), 
     ylabel = "Average score per species",
     group_species = TRUE,
-    species_names = parameters$Y_SPECIES,
-    save_to = NULL))
+    species_names = parameters$Y_SPECIES))
 ```
 :::
 
@@ -488,84 +455,90 @@ Similarly to training size, the effect is statistically significant (p <<< 0.01)
 
 ### Number of explicative variables
 ::: {.panel-tabset}
-```{r, fig.dim=c(11, 6)}
+```{r}
+#| label: X_variables setup
 #| echo: false
 #| warning: false
-COLUMN <- "formulas"
-filename_sections <- loop_selector(param_grid, COLUMN)
-loop_list <- unique(param_grid[[COLUMN]])
-loop_list <- sapply(lapply(loop_list, all.vars), length)
-loop_list <- sort(loop_list)
+loop_on <- "HMSC_XFORMULAS"
+combination <- COMBINATIONS[[2]]
+
+if (any(sapply(combination[[loop_on]], is.numeric))) {
+    combination[[loop_on]] <- sort(combination[[loop_on]])
+}
+ref_model <- list()
+loop_model <- list()
+
+for (name in names(combination) ) {
+    if (name == loop_on) {
+        ref_model[[name]] <- combination[[name]][1]
+        loop_model[[name]] <- combination[[loop_on]][-1]
+    } else {
+        ref_model[[name]] <- combination[[name]]
+        loop_model[[name]] <- combination[[name]] 
+    }
+}
 ```
 
 #### Boxplot differences
 ```{r, fig.dim=c(11, 6)}
-#| label: formulas_1
+#| label: X_variables boxplots
 #| echo: false
 #| warning: false
 . <- suppressMessages(boxplot_compare_scores(
     parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)), 
-    reference_model_path = paste0(
-        filename_sections[[1]], loop_list[1], filename_sections[[2]]), 
-    loop_prefix = filename_sections[[1]], 
-    loop_elements = loop_list[-1], 
-    loop_suffix = filename_sections[[2]], 
+    reference_model_combination = ref_model, 
+    loop_model_combination = loop_model, 
+    loop_on = loop_on,
     k_fold = parameters$K_FOLDS, 
     metric = "MSE",
     subset_names = c("train", "val", "test"),
     xlabel = paste0(
-        "Effect of ", tolower(COLUMN),
-        ", compared to '", loop_list[1], "'"), 
+        "Effect of ", tolower(loop_on),
+        ", compared to '", length(all.vars(ref_model[[loop_on]][[1]])), "'"), 
     group_species = TRUE,
-    species_names = parameters$Y_SPECIES,
-    save_to = NULL))
+    species_names = parameters$Y_SPECIES))
 ```
 
 #### Boxplot improvement
 ```{r, fig.dim=c(11, 6)}
-#| label: formulas_2
+#| label: X_variables boxplots bis
 #| echo: false
 #| warning: false
 . <- suppressMessages(boxplot_sp_improvements(
-    parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)), 
-    reference_model_path = paste0(
-            filename_sections[[1]], loop_list[1], filename_sections[[2]]), 
-    loop_prefix = filename_sections[[1]], 
-    loop_elements = loop_list[-1], 
-    loop_suffix = filename_sections[[2]], 
+    parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)),
+    reference_model_combination = ref_model, 
+    loop_model_combination = loop_model, 
+    loop_on = loop_on,
     k_fold = parameters$K_FOLDS, 
     metric = "MSE",
     xlabel = paste0(
-            "Effect of ", tolower(COLUMN),
-            ", compared to '", loop_list[1], "'"), 
+            "Effect of ", tolower(loop_on),
+            ", compared to '", length(all.vars(ref_model[[loop_on]][[1]])), "'"), 
     subset_names = c("train", "val", "test"),
-    proportion = 1/100,
-    save_to = NULL))
+    proportion = 1/100))
 ```
 
 #### Estimated effects
 ```{r, fig.dim=c(11, 6)}
-#| label: formulas_3
+#| label: X_variables lineplot
 #| echo: false
 #| warning: false
 formulas_stats <- suppressMessages(lineplot_model_scores(
     parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)), 
-    loop_prefix = filename_sections[[1]], 
-    loop_elements = loop_list, 
-    loop_suffix = filename_sections[[2]], 
+    loop_model_combination = combination, 
+    loop_on = loop_on,
     k_fold = parameters$K_FOLDS, 
     metric = "MSE",
-    xlabel = paste0("Effect of ", tolower(COLUMN)," type on MSE"), 
+    xlabel = paste0("Effect of ", tolower(loop_on)," type on MSE"), 
     ylabel = "Average score per species",
     group_species = TRUE,
-    species_names = parameters$Y_SPECIES,
-    save_to = NULL))
+    species_names = parameters$Y_SPECIES))
 ```
 :::
 
 **Fitted model:**
 ```{r}
-#| label: formulas stats
+#| label: X_variables stats
 #| echo: false
 #| warning: false
 #| output: true
@@ -575,78 +548,85 @@ print(summary(formulas_stats$models$test), correlation = FALSE)
 **Conclusions:**
 There is weak evidence (p ≈ 0.05) that adding explicative variables reduces test MSE: there are only 3 points, which are not necessarily linearly distributed.
 
-### Random Effect
+### Random effects
 ::: {.panel-tabset}
-```{r, fig.dim=c(11, 6)}
+```{r}
+#| label: Random effects setup
 #| echo: false
 #| warning: false
-COLUMN <- "r_effect"
-filename_sections <- loop_selector(param_grid, COLUMN)
-loop_list <- unique(param_grid[[COLUMN]])
+loop_on <- "R_EFFECTS"
+combination <- COMBINATIONS[[3]]
+
+if (any(sapply(combination[[loop_on]], is.numeric))) {
+    combination[[loop_on]] <- sort(combination[[loop_on]])
+}
+ref_model <- list()
+loop_model <- list()
+
+for (name in names(combination) ) {
+    if (name == loop_on) {
+        ref_model[[name]] <- combination[[name]][1]
+        loop_model[[name]] <- combination[[loop_on]][-1]
+    } else {
+        ref_model[[name]] <- combination[[name]]
+        loop_model[[name]] <- combination[[name]] 
+    }
+}
 ```
 
 #### Boxplot differences
 ```{r, fig.dim=c(11, 6)}
-#| label: r_effect_1
+#| label: Random effects boxplots
 #| echo: false
 #| warning: false
 . <- suppressMessages(boxplot_compare_scores(
     parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)), 
-    reference_model_path = paste0(
-        filename_sections[[1]], loop_list[1], filename_sections[[2]]), 
-    loop_prefix = filename_sections[[1]], 
-    loop_elements = loop_list[-1], 
-    loop_suffix = filename_sections[[2]], 
+    reference_model_combination = ref_model, 
+    loop_model_combination = loop_model, 
+    loop_on = loop_on,
     k_fold = parameters$K_FOLDS, 
     metric = "MSE",
     subset_names = c("train", "val", "test"),
     xlabel = paste0(
-        "Effect of ", tolower(COLUMN),
-        ", compared to '", loop_list[1], "'"), 
+        "Effect of ", tolower(loop_on),
+        ", compared to '", ref_model[[loop_on]], "'"), 
     group_species = TRUE,
-    species_names = parameters$Y_SPECIES,
-    save_to = NULL))
+    species_names = parameters$Y_SPECIES))
 ```
 
 #### Boxplot improvement
 ```{r, fig.dim=c(11, 6)}
-#| label: r_effect_2
+#| label: Random effects boxplots bis
 #| echo: false
 #| warning: false
 . <- suppressMessages(boxplot_sp_improvements(
-    parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)), 
-    reference_model_path = paste0(
-            filename_sections[[1]], loop_list[1], filename_sections[[2]]), 
-    loop_prefix = filename_sections[[1]], 
-    loop_elements = loop_list[-1], 
-    loop_suffix = filename_sections[[2]], 
+    parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)),
+    reference_model_combination = ref_model, 
+    loop_model_combination = loop_model, 
+    loop_on = loop_on,
     k_fold = parameters$K_FOLDS, 
     metric = "MSE",
     xlabel = paste0(
-            "Effect of ", tolower(COLUMN),
-            ", compared to '", loop_list[1], "'"), 
+            "Effect of ", tolower(loop_on),
+            ", compared to '", ref_model[[loop_on]], "'"), 
     subset_names = c("train", "val", "test"),
-    proportion = 1/100,
-    save_to = NULL))
+    proportion = 1/100))
 ```
 
 #### Estimated effects
 ```{r, fig.dim=c(11, 6)}
-#| label: r_effect_3
+#| label: Random effects dotwhiskers
 #| echo: false
 #| warning: false
 random_stats <- suppressMessages(dotwhisker_model_scores(
     parent_folder = here::here(file.path(RESULTS_PATH, SUBFOLDER)), 
-    save_to = NULL,
-    loop_prefix = filename_sections[[1]], 
-    loop_elements = loop_list, 
-    loop_suffix = filename_sections[[2]], 
+    loop_model_combination = combination, 
+    loop_on = loop_on,
     k_fold = parameters$K_FOLDS, 
     metric = "MSE",
-    xlabel = "Difference in MSE", 
-    ylabel = paste0(
-        "Effect of ", tolower(COLUMN),
-        ", compared to '", loop_list[1], "'"),
+    xlabel = paste0(
+        "Estimated MSE coefficient relative to '", ref_model[[loop_on]], "'"),
+    ylabel = paste0("Effect of ", tolower(loop_on)," type on MSE"),
     group_species = TRUE,
     species_names = parameters$Y_SPECIES))
 ```
@@ -654,7 +634,7 @@ random_stats <- suppressMessages(dotwhisker_model_scores(
 
 **Fitted model:**
 ```{r}
-#| label: r_effect stats
+#| label: Random effects stats
 #| echo: false
 #| warning: false
 #| output: true

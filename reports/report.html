@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Loïc Lehnhoff">
-<meta name="dcterms.date" content="2026-08-14">
+<meta name="dcterms.date" content="2026-09-01">
 
 <title>BIODICAPT: Optimal Experimental Design</title>
 <style>
@@ -93,7 +93,7 @@ div.csl-indent {
   <li><a href="#training-size" id="toc-training-size" class="nav-link" data-scroll-target="#training-size">Training size</a></li>
   <li><a href="#number-of-new-samples" id="toc-number-of-new-samples" class="nav-link" data-scroll-target="#number-of-new-samples">Number of new samples</a></li>
   <li><a href="#number-of-explicative-variables" id="toc-number-of-explicative-variables" class="nav-link" data-scroll-target="#number-of-explicative-variables">Number of explicative variables</a></li>
-  <li><a href="#random-effect" id="toc-random-effect" class="nav-link" data-scroll-target="#random-effect">Random Effect</a></li>
+  <li><a href="#random-effects" id="toc-random-effects" class="nav-link" data-scroll-target="#random-effects">Random effects</a></li>
   </ul></li>
   <li><a href="#overall-discussion" id="toc-overall-discussion" class="nav-link" data-scroll-target="#overall-discussion">Overall discussion</a></li>
   </ul></li>
@@ -128,7 +128,7 @@ div.csl-indent {
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">2026-08-14</p>
+      <p class="date">2026-09-01</p>
     </div>
   </div>
   
@@ -190,7 +190,7 @@ div.csl-indent {
 <div id="callout-1" class="callout-1-contents callout-collapse collapse">
 <div class="callout-body-container callout-body">
 <p>Only HMSC has been implemented into our code for now. GJAM is under consideration, as well as other SDMs: RF, SSDM, deep-SDMs, …</p>
-<p>↳ This section will be updated when results are available.</p>
+<p>↳ This section will be updated when new results are available.</p>
 </div>
 </div>
 </div>
@@ -280,7 +280,7 @@ div.csl-indent {
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="report_files/figure-html/copy%20of%20fig3a-1.png" class="img-fluid figure-img"></p>
+<p><img src="report_files/figure-html/Strategies%20boxplots-1.png" class="img-fluid figure-img"></p>
 </figure>
 </div>
 </div>
@@ -291,7 +291,7 @@ div.csl-indent {
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="report_files/figure-html/copy%20of%20fig3b-1.png" class="img-fluid figure-img"></p>
+<p><img src="report_files/figure-html/Strategies%20boxplots%20bis-1.png" class="img-fluid figure-img"></p>
 </figure>
 </div>
 </div>
@@ -302,7 +302,7 @@ div.csl-indent {
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="report_files/figure-html/copy%20of%20fig3a%20bis-1.png" class="img-fluid figure-img"></p>
+<p><img src="report_files/figure-html/Strategies%20dotwhisker-1.png" class="img-fluid figure-img"></p>
 </figure>
 </div>
 </div>
@@ -369,7 +369,7 @@ Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="report_files/figure-html/training_size_1-1.png" class="img-fluid figure-img"></p>
+<p><img src="report_files/figure-html/Training%20sizes%20boxplots-1.png" class="img-fluid figure-img"></p>
 </figure>
 </div>
 </div>
@@ -380,7 +380,7 @@ Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="report_files/figure-html/training_size_2-1.png" class="img-fluid figure-img"></p>
+<p><img src="report_files/figure-html/Training%20sizes%20boxplots%20bis-1.png" class="img-fluid figure-img"></p>
 </figure>
 </div>
 </div>
@@ -391,7 +391,7 @@ Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="report_files/figure-html/training_size_3-1.png" class="img-fluid figure-img"></p>
+<p><img src="report_files/figure-html/Training%20sizes%20dotwhiskers-1.png" class="img-fluid figure-img"></p>
 </figure>
 </div>
 </div>
@@ -442,7 +442,7 @@ Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="report_files/figure-html/new_samples_1-1.png" class="img-fluid figure-img"></p>
+<p><img src="report_files/figure-html/New%20sample%20sizes%20boxplots-1.png" class="img-fluid figure-img"></p>
 </figure>
 </div>
 </div>
@@ -453,7 +453,7 @@ Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="report_files/figure-html/new_samples_2-1.png" class="img-fluid figure-img"></p>
+<p><img src="report_files/figure-html/New%20sample%20sizes%20boxplots%20bis-1.png" class="img-fluid figure-img"></p>
 </figure>
 </div>
 </div>
@@ -464,7 +464,7 @@ Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="report_files/figure-html/new_samples_3-1.png" class="img-fluid figure-img"></p>
+<p><img src="report_files/figure-html/New%20sample%20sizes%20lineplot-1.png" class="img-fluid figure-img"></p>
 </figure>
 </div>
 </div>
@@ -513,7 +513,7 @@ Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="report_files/figure-html/formulas_1-1.png" class="img-fluid figure-img"></p>
+<p><img src="report_files/figure-html/X_variables%20boxplots-1.png" class="img-fluid figure-img"></p>
 </figure>
 </div>
 </div>
@@ -524,7 +524,7 @@ Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="report_files/figure-html/formulas_2-1.png" class="img-fluid figure-img"></p>
+<p><img src="report_files/figure-html/X_variables%20boxplots%20bis-1.png" class="img-fluid figure-img"></p>
 </figure>
 </div>
 </div>
@@ -535,7 +535,7 @@ Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="report_files/figure-html/formulas_3-1.png" class="img-fluid figure-img"></p>
+<p><img src="report_files/figure-html/X_variables%20lineplot-1.png" class="img-fluid figure-img"></p>
 </figure>
 </div>
 </div>
@@ -574,8 +574,8 @@ Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
 </div>
 <p><strong>Conclusions:</strong> There is weak evidence (p ≈ 0.05) that adding explicative variables reduces test MSE: there are only 3 points, which are not necessarily linearly distributed.</p>
 </section>
-<section id="random-effect" class="level3">
-<h3 class="anchored" data-anchor-id="random-effect">Random Effect</h3>
+<section id="random-effects" class="level3">
+<h3 class="anchored" data-anchor-id="random-effects">Random effects</h3>
 <div class="tabset-margin-container"></div><div class="panel-tabset">
 <ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-5-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-1" role="tab" aria-controls="tabset-5-1" aria-selected="true" href="">Boxplot differences</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-5-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-2" role="tab" aria-controls="tabset-5-2" aria-selected="false" href="">Boxplot improvement</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-5-3-tab" data-bs-toggle="tab" data-bs-target="#tabset-5-3" role="tab" aria-controls="tabset-5-3" aria-selected="false" href="">Estimated effects</a></li></ul>
 <div class="tab-content">
@@ -584,7 +584,7 @@ Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="report_files/figure-html/r_effect_1-1.png" class="img-fluid figure-img"></p>
+<p><img src="report_files/figure-html/Random%20effects%20boxplots-1.png" class="img-fluid figure-img"></p>
 </figure>
 </div>
 </div>
@@ -595,7 +595,7 @@ Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="report_files/figure-html/r_effect_2-1.png" class="img-fluid figure-img"></p>
+<p><img src="report_files/figure-html/Random%20effects%20boxplots%20bis-1.png" class="img-fluid figure-img"></p>
 </figure>
 </div>
 </div>
@@ -606,7 +606,7 @@ Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="report_files/figure-html/r_effect_3-1.png" class="img-fluid figure-img"></p>
+<p><img src="report_files/figure-html/Random%20effects%20dotwhiskers-1.png" class="img-fluid figure-img"></p>
 </figure>
 </div>
 </div>
