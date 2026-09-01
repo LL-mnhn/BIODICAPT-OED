@@ -26,7 +26,7 @@ COMBINATIONS <- parameters$COMBINATIONS
 ##### Main ##### --------------------------------------------------------------
 cli_alert_info("------------ Score comparison ------------\n\n")
 for (combination in COMBINATIONS) {
-    if (sum(lapply(combination, length) > 1) >1) {
+    if (sum(lapply(combination, length) > 1) > 1) {
         stop(paste(
             "Error in combination, found more than one parameter",
             "with a vector of values of length > 1."
@@ -69,6 +69,7 @@ for (combination in COMBINATIONS) {
             parent_folder = file.path(RESULTS_PATH, SUBFOLDER), 
             reference_model_combination = ref_model, 
             loop_model_combination = loop_model, 
+            loop_on = loop_on,
             k_fold = parameters$K_FOLDS, 
             metric = "MSE",
             subset_names = c("train", "val", "test"),
@@ -86,6 +87,7 @@ for (combination in COMBINATIONS) {
             . <- suppressMessages(lineplot_model_scores(
                 parent_folder = file.path(RESULTS_PATH, SUBFOLDER), 
                 loop_model_combination = combination, 
+                loop_on = loop_on,
                 k_fold = parameters$K_FOLDS, 
                 metric = "MSE",
                 xlabel = paste0("Effect of ", tolower(loop_on)," type on MSE"), 
@@ -100,6 +102,7 @@ for (combination in COMBINATIONS) {
             . <- suppressMessages(dotwhisker_model_scores(
                 parent_folder = file.path(RESULTS_PATH, SUBFOLDER), 
                 loop_model_combination = combination, 
+                loop_on = loop_on,
                 k_fold = parameters$K_FOLDS, 
                 metric = "MSE",
                 xlabel = paste0(
@@ -119,6 +122,7 @@ for (combination in COMBINATIONS) {
         parent_folder = file.path(RESULTS_PATH, SUBFOLDER),
         reference_model_combination = ref_model, 
         loop_model_combination = loop_model, 
+        loop_on = loop_on,
         k_fold = parameters$K_FOLDS, 
         metric = "MSE",
         xlabel = paste0(

@@ -28,39 +28,74 @@ source(here::here("data/config/config.R")) # Import global parameters
 #   - combination: a list of parameters.
 #   - k_fold: a numeric.
 make_run_path <- function(folder, combination, k_fold) {
-    r_effect <- combination$R_EFFECTS
-    strategy <- combination$STRATEGIES
-    n_new_samples <- combination$NEW_SAMPLE_SIZES
-    train_size <- combination$TRAIN_SIZES
-    x_variables <- combination$HMSC_XFORMULAS
-        
-    # if strategy is none, overwrite n_new_samples to avoid errors
-    if ((strategy == "none") & (n_new_samples != 0)) {
-        cli_alert_warning(paste0(
-            "Strategy is 'none' but n_new_samples is '", n_new_samples, "'.",
-            " Overwriting with n_new_samples = '0' to avoid errors."))
-        n_new_samples <- 0
-    }
-    # if n_new_samples is 0, no need to apply a strategy, use "none"
-    if ((n_new_samples == 0) & (strategy != "none")) {
-        cli_alert_warning(paste0(
-            "n_new_samples is '0' but strategy is '", strategy, "'.",
-            " Overwriting with strategy = 'none' to avoid errors."))
-        strategy <- 'none'
+    # check that there is at must one parameter with a list of values
+    if (sum(lapply(combination, length) > 1) > 1) {
+        stop(paste(
+            "Error in combination, found more than one parameter",
+            "with a vector of values of length > 1."
+        ))
+    } else if (sum(lapply(combination, length) > 1) == 1) {
+        loop_on <- names(which(lapply(combination, length) > 1))
+        cli_alert_info(paste(
+            "Auto-selection of parameter to loop on:", loop_on))
+    } else {
+        # dummy loop name
+        loop_on <- "TRAIN_SIZES"
     }
 
-    run_path <- file.path(
-        folder, paste0(
-            "model_random-", r_effect,
-            "_strategy-", strategy,
-            "_new-samples-", n_new_samples,
-            "_training-size-", train_size,
-            "_n-variables-", lapply(lapply(x_variables, all.vars), length),
-            "_k", k_fold
+    run_paths <- c()
+    for (loop_element in combination[[loop_on]]) {
+        # initialize list of new parameters for each iteration
+        local_com <- list()
+        local_com$R_EFFECTS <- combination$R_EFFECTS
+        local_com$STRATEGIES <- combination$STRATEGIES
+        local_com$NEW_SAMPLE_SIZES <- combination$NEW_SAMPLE_SIZES
+        local_com$TRAIN_SIZES <- combination$TRAIN_SIZES
+        local_com$HMSC_XFORMULAS <- combination$HMSC_XFORMULAS
+
+        # overwrite with loop_on name (replaces list by current iteration item)
+        local_com[[loop_on]] <- loop_element
+            if (is.list(local_com$HMSC_XFORMULAS)) {
+                if (is_formula(local_com$HMSC_XFORMULAS[[1]])) {
+                    local_com$HMSC_XFORMULAS <- local_com$HMSC_XFORMULAS[[1]]
+                } else {
+                    stop("Function was not made to handle loop_element as list when not a formula.")
+                }
+            }
+        
+        # if strategy is none, overwrite n_new_samples to avoid errors
+        if ((local_com$STRATEGIES == "none") & (local_com$NEW_SAMPLE_SIZES != 0)) {
+            cli_alert_warning(paste0(
+                "Strategy is 'none' but n_new_samples is '", 
+                local_com$NEW_SAMPLE_SIZES, 
+                "'. Overwriting with n_new_samples = '0' to avoid errors."))
+            local_com$NEW_SAMPLE_SIZES <- 0
+        }
+
+        # if n_new_samples is 0, no need to apply a strategy, use "none"
+        if ((local_com$NEW_SAMPLE_SIZES == 0) & (local_com$STRATEGIES != "none")) {
+            cli_alert_warning(paste0(
+                "n_new_samples is '0' but strategy is '", local_com$STRATEGIES, 
+                "'. Overwriting with strategy = 'none' to avoid errors."))
+            local_com$STRATEGIES <- 'none'
+        }     
+        
+        run_paths <- c(
+            run_paths,
+            file.path(
+                folder, paste0(
+                    "model_random-", local_com$R_EFFECTS,
+                    "_strategy-", local_com$STRATEGIES,
+                    "_new-samples-", local_com$NEW_SAMPLE_SIZES,
+                    "_training-size-", local_com$TRAIN_SIZES,
+                    "_n-variables-", length(all.vars(local_com$HMSC_XFORMULAS)),
+                    "_k", k_fold
+                )
+            )
         )
-    )
+    }
     
-    return(run_path)
+    return(unique(run_paths))
 }
 
 # A function to turn lists of lists into a dataframe with combinations as rows.
@@ -872,7 +907,7 @@ load_metric_scores <- function(run_path, subset_name, metric) {
 #   - subset_names: a list string. Usually c("train", "val", "test").
 load_reference_and_other_scores <- function(
         parent_folder, reference_model_combination, loop_model_combination,
-        k_fold, metric, subset_names) {
+        loop_on, k_fold, metric, subset_names) {
     cli_alert_info("Loading base results...")
     ref_scores <- list()
     for (subset_name in subset_names) {
@@ -887,13 +922,18 @@ load_reference_and_other_scores <- function(
     other_scores <- list()
     for (subset_name in subset_names) {
         other_scores[[subset_name]] <- list()
-        run_paths <- make_run_path(parent_folder, loop_model_combination, "")
-        loop_elements <- loop_model_combination[[names(which(lapply(loop_model_combination, length) > 1))]]
+        run_paths <- make_run_path(
+            parent_folder, loop_model_combination, "")
+        loop_elements <- loop_model_combination[[loop_on]]
 
         for (i in 1:length(run_paths)) {
             loop_element <- loop_elements[i]
             if (is.list(loop_element)) {
-                loop_element <- length(all.vars(loop_element[[1]]))
+                if (is_formula(loop_element[[1]])) {
+                    loop_element <- length(all.vars(loop_element[[1]]))
+                } else {
+                    stop("Function was not made to handle loop_element as list when not a formula.")
+                }
             }
             
             other_scores[[subset_name]][[loop_element]] <- lapply(
@@ -926,12 +966,13 @@ load_reference_and_other_scores <- function(
 #       (rownames are not available from csvs).
 compute_score_diffs <- function(
         parent_folder, reference_model_combination, loop_model_combination, 
-        k_fold, metric = "MSE", subset_names = c("train", "val", "test"),
+        loop_on, k_fold, metric = "MSE", 
+        subset_names = c("train", "val", "test"),
         group_species = TRUE, species_names = NULL) {
 
     loaded <- load_reference_and_other_scores(
         parent_folder, reference_model_combination, loop_model_combination, 
-        k_fold, metric, subset_names)
+        loop_on, k_fold, metric, subset_names)
     ref_scores <- loaded$ref_scores
     other_scores <- loaded$other_scores
 
@@ -948,7 +989,7 @@ compute_score_diffs <- function(
         }
     }
 
-    loop_elements <- loop_model_combination[[names(which(lapply(loop_model_combination, length) > 1))]]
+    loop_elements <- loop_model_combination[[loop_on]]
     scores_df <- tibble()
     raw_diffs_df <- tibble()
 
@@ -1027,6 +1068,10 @@ compute_score_diffs <- function(
         }
     }
 
+    # if loop_elements are formulas, apply transformation to get numerics
+    if (all(sapply(loop_elements, is_formula))) {
+        loop_elements <- sort(sapply(sapply(loop_elements, all.vars), length))
+    }
     scores_df <- scores_df |>
         mutate(loop_element = factor(loop_element, levels = loop_elements)) |>
         mutate(subset = factor(subset, levels = subset_names))
@@ -1061,12 +1106,13 @@ compute_score_diffs <- function(
 #       score as improved. 
 compute_number_of_improvements <- function(
         parent_folder, reference_model_combination, loop_model_combination, 
-        k_fold, metric = "MSE", subset_names = c("train", "val", "test"),
+        loop_on, k_fold, metric = "MSE", 
+        subset_names = c("train", "val", "test"),
         species_names = NULL, proportion = 1/100) {
 
     loaded <- load_reference_and_other_scores(
         parent_folder, reference_model_combination, loop_model_combination, 
-        k_fold, metric, subset_names)
+        loop_on, k_fold, metric, subset_names)
     ref_scores <- loaded$ref_scores
     other_scores <- loaded$other_scores
 
@@ -1081,7 +1127,7 @@ compute_number_of_improvements <- function(
         ))
     }
 
-    loop_elements <- loop_model_combination[[names(which(lapply(loop_model_combination, length) > 1))]]
+    loop_elements <- loop_model_combination[[loop_on]]
     prop_diffs_df <- tibble()
 
     for (subset_name in subset_names) {
@@ -1133,6 +1179,10 @@ compute_number_of_improvements <- function(
         }
     }
 
+    # if loop_elements are formulas, apply transformation to get numerics
+    if (all(sapply(loop_elements, is_formula))) {
+        loop_elements <- sort(sapply(sapply(loop_elements, all.vars), length))
+    }
     prop_diffs_df <- prop_diffs_df |>
         mutate(loop_element = factor(loop_element, levels = loop_elements)) |>
         mutate(subset = factor(subset, levels = subset_names))
@@ -1163,6 +1213,7 @@ compute_number_of_improvements <- function(
 barplot_raw_scores <- function(
         parent_folder,
         loop_model_combination,
+        loop_on,
         k_fold,
         xlabel = "Model type",
         ylabel = "Average Score",
@@ -1174,8 +1225,9 @@ barplot_raw_scores <- function(
 
     cli_alert_info("Fetching scores...")
 
-    run_paths <- make_run_path(parent_folder, loop_model_combination, "")
-    loop_elements <- loop_model_combination[[names(which(lapply(loop_model_combination, length) > 1))]]
+    run_paths <- make_run_path(
+        parent_folder, loop_model_combination, "")
+    loop_elements <- loop_model_combination[[loop_on]]
     scores_df <- data.frame()
     for (k in seq(k_fold)) {
         for (i in 1:length(run_paths)) {
@@ -1183,7 +1235,11 @@ barplot_raw_scores <- function(
             loop_element <- loop_elements[i]
 
             if (is.list(loop_element)) {
-                loop_element <- length(all.vars(loop_element[[1]]))
+                if (is_formula(loop_element[[1]])) {
+                    loop_element <- length(all.vars(loop_element[[1]]))
+                } else {
+                    stop("Function was not made to handle loop_element as list when not a formula.")
+                }
             }
 
             for (subset_name in subset_names) {
@@ -1322,6 +1378,7 @@ boxplot_compare_scores <- function(
         parent_folder,
         reference_model_combination,
         loop_model_combination,
+        loop_on,
         k_fold,
         metric = "MSE",
         subset_names = c("train", "val", "test"),
@@ -1332,7 +1389,7 @@ boxplot_compare_scores <- function(
 
     diffs <- compute_score_diffs(
         parent_folder, reference_model_combination, loop_model_combination,
-        k_fold, metric, subset_names, group_species, species_names)
+        loop_on, k_fold, metric, subset_names, group_species, species_names)
     scores_df <- diffs$summary
     raw_diffs_df <- diffs$raw_diffs
 
@@ -1473,6 +1530,7 @@ boxplot_sp_improvements <- function(
         parent_folder,
         reference_model_combination,
         loop_model_combination,
+        loop_on,
         k_fold,
         metric = "MSE",
         proportion = 1/100,
@@ -1484,6 +1542,7 @@ boxplot_sp_improvements <- function(
         parent_folder = parent_folder, 
         reference_model_combination = reference_model_combination, 
         loop_model_combination = loop_model_combination, 
+        loop_on = loop_on,
         k_fold = k_fold, 
         metric = metric,
         subset_names = subset_names,
@@ -1577,6 +1636,7 @@ boxplot_sp_improvements <- function(
 dotwhisker_model_scores <- function(
         parent_folder,
         loop_model_combination,
+        loop_on,
         k_fold,
         metric,
         subset_names = c("train", "val", "test"),
@@ -1586,7 +1646,7 @@ dotwhisker_model_scores <- function(
         species_names = NULL,
         save_to = NULL) {
             
-    loop_elements <- loop_model_combination[[names(which(lapply(loop_model_combination, length) > 1))]]
+    loop_elements <- loop_model_combination[[loop_on]]
     if (is.numeric(loop_elements)) {
         stop(paste0(
             "This function was not made to handle factors in 'loop_elements',",
@@ -1594,7 +1654,8 @@ dotwhisker_model_scores <- function(
             "`barplot = FALSE` instead."))
     }
 
-    run_paths <- make_run_path(parent_folder, loop_model_combination, "")
+    run_paths <- make_run_path(
+        parent_folder, loop_model_combination, "")
     cli_alert_info("Fetching scores...")
     scores_df <- data.frame()
     for (k in seq(k_fold)) {
@@ -1603,7 +1664,11 @@ dotwhisker_model_scores <- function(
             loop_element <- loop_elements[i]
 
             if (is.list(loop_element)) {
-                loop_element <- length(all.vars(loop_element[[1]]))
+                if (is_formula(loop_element[[1]])) {
+                    loop_element <- length(all.vars(loop_element[[1]]))
+                } else {
+                    stop("Function was not made to handle loop_element as list when not a formula.")
+                }
             }
 
             for (subset_name in subset_names) {
@@ -1741,6 +1806,7 @@ dotwhisker_model_scores <- function(
 lineplot_model_scores <- function(
         parent_folder,
         loop_model_combination,
+        loop_on,
         k_fold,
         metric,
         xlabel = "Model type",
@@ -1750,8 +1816,9 @@ lineplot_model_scores <- function(
         subset_names = c("train", "val", "test"),
         save_to = NULL) {
     
-    loop_elements <- loop_model_combination[[names(which(lapply(loop_model_combination, length) > 1))]]
-    run_paths <- make_run_path(parent_folder, loop_model_combination, "")
+    loop_elements <- loop_model_combination[[loop_on]]
+    run_paths <- make_run_path(
+        parent_folder, loop_model_combination, "")
 
     cli_alert_info("Fetching scores...")
     scores_df <- data.frame()
@@ -1761,7 +1828,11 @@ lineplot_model_scores <- function(
             loop_element <- loop_elements[i]
 
             if (is.list(loop_element)) {
-                loop_element <- length(all.vars(loop_element[[1]]))
+                if (is_formula(loop_element[[1]])) {
+                    loop_element <- length(all.vars(loop_element[[1]]))
+                } else {
+                    stop("Function was not made to handle loop_element as list when not a formula.")
+                }
             }
 
             for (subset_name in subset_names) {
