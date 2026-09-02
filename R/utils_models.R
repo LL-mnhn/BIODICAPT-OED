@@ -770,19 +770,37 @@ predict_hmsc <- function(hM, df, x_variables) {
     XData <- as.data.frame(setNames(
         lapply(x_variables, function(col) df[[col]]),
         x_variables))
-    
-    # Format study design (grouping of samples together)
-    studyDesign <- data.frame(
-        points = as.factor(df$point), 
-        carres = as.factor(df$carre), 
-        spatial = as.factor(df$id_point_annee)
-    )
 
-    # Make prediction on new dataset
-    full_preds_list <- predict(
-        hM, XData = XData, studyDesign = studyDesign, expected = TRUE)
-    
-    return(full_preds_list)
+    if ("spatial" %in% names(fitted_model$ranLevels)) {
+        # Format coordinates associated to each point
+        coords_sf <- sf::st_as_sf(df, coords = c("LON", "LAT"), crs = 4326)
+        coords_proj <- sf::st_transform(coords_sf, crs = 2154)
+        xy_new <- sf::st_coordinates(coords_proj)
+        rownames(xy_new) <- as.character(df$id_point_annee)
+        colnames(xy_new) <- c("longitude_grid_2154", "latitude_grid_2154")
+
+        # Use Gradient (instead of studyDesign), for spatial gradients
+        Gradient <- prepareGradient(
+            hM,
+            XDataNew = XData,
+            sDataNew = list(spatial = xy_new)
+        )
+
+        # Make prediction on new dataset
+        return(predict(hM, Gradient = Gradient, expected = TRUE))
+
+    } else {
+        # Format study design (grouping of samples together)
+        studyDesign <- data.frame(
+            points = as.factor(df$point),
+            carres = as.factor(df$carre), 
+            spatial = as.factor(df$id_point_annee)
+        )
+
+        # Make prediction on new dataset
+        return(predict(
+            hM, XData = XData, studyDesign = studyDesign, expected = TRUE))
+    }
 }
 
 # A function that mimciks Hmsc::evaluateModelFit but can also work on 
