@@ -213,7 +213,7 @@ prepare_hmsc_training <- function(
         # There are two possibilities : map the entire grid of points or use
         # nearest neighbour approximation. After ~1000 points its better to use
         # the approximation for faster computation.
-        if (nrow(xy_spatial) < 1000) {
+        if (nrow(xy) < 1000) {
             rL.spatial <- HmscRandomLevel(sData = xy)
         } else {
             rL.spatial <- HmscRandomLevel(
