@@ -26,14 +26,6 @@ if (file.exists(file.path("data", "config", "seed.R"))) {
 PATH_DATA_FIGURES <- file.path(FIGURES_PATH, "data")
 dir.create(PATH_DATA_FIGURES, recursive = TRUE)
 
-# biodicapt dataset
-BIODICAPT_PATH_PREPROCESSED <- file.path(PROCESSED_DATA_PATH, 
-        "BIODICAPT_survey_data_anonymized.csv") 
-
-# 500eni dataset
-ENI500_PATH_PREPROCESSED <- file.path(PROCESSED_DATA_PATH, 
-        "ENI500_survey_data_anonymized.csv") 
-
 # Corine Land Cover dataset
 CORINE_BASENAME <- file.path(PROCESSED_DATA_PATH, paste0("CLC", OBS_YEAR))
 SIMPLIFIED_CORINE_PATH <- file.path(
@@ -52,70 +44,6 @@ STOC_PATH_PREPROCESSED <- file.path(PROCESSED_DATA_PATH,
 
 
 ##### Helper functions ##### --------------------------------------------------
-preprocess_biodicapt_dataset <- function() {
-    cli_alert_info("Pre-processing of BIODICAPT dataset.")
-    if (!authorize_overwrite(BIODICAPT_PATH_PREPROCESSED)) {
-        # Check if file exists
-        cli_alert_warning("Skipping BIODICAPT pre-processing.\n\n")
-
-    } else {
-        # preprocess file if authorized
-        cli_alert_info("Loading BIODICAPT files...")
-
-        # load file and remove useless columns
-        biodicapt_df <- import_biodicapt_land_surveys(
-            file.path(BIODICAPT_FOLDER, BIODICAPT_FILENAMES))
-    
-        # Blurr GPS data (for confidentiality of land owners)
-        cli_alert_info("Data anonymization...")
-        anonym_biodicapt_df <- blur_coordinates(
-            biodicapt_df, "LON", "LAT", RES_KM, BLUR_SEED)
-
-        # Save resulting dataframe
-        cli_alert_info("Saving file...")
-        write_csv(anonym_biodicapt_df, BIODICAPT_PATH_PREPROCESSED)
-        cli_alert_success("Modified BIODICAPT file saved!\n\n")
-    }
-}
-
-preprocess_eni500_dataset <- function() {
-    cli_alert_info("Pre-processing of 500 ENI dataset.")
-
-    if (!authorize_overwrite(ENI500_PATH_PREPROCESSED)) {
-        # Check if file exists
-        cli_alert_warning("Skipping 500 ENI pre-processing.\n\n")
-        
-    } else {
-        # preprocess file if authorized
-        cli_alert_info("Loading 500 ENI files...")
-
-        # load file and remove useless columns
-        eni500_df <- read_csv(
-            file.path(ENI500_FOLDER, ENI500_FILENAME),
-            show_col_types = FALSE)
-        cols_to_remove <- c(
-            "lieu_dit", "code_postal", "pourcent_pente", "id_parcelle",
-            "commentaire_parcelle", "derniere_modif_parcelle_par", "commune",
-            "derniere_modif_parcelle_le", "derniere_modif_donnees_agro_par",
-            "derniere_modif_donnees_agro_le", "derniere_modif_pratiques_par",
-            "derniere_modif_pratiques_le", "code_parcelle", "nom_parcelle")
-        eni500_df <- eni500_df |> select(-any_of(cols_to_remove))
-    
-        # Rename coordinates columns
-        eni500_df <- eni500_df |> rename(LON = X, LAT = Y)
-          
-        # Blurr GPS data (for confidentiality of land owners)
-        cli_alert_info("Data anonymization...")
-        anonym_eni500_df <- blur_coordinates(
-            eni500_df, "LON", "LAT", RES_KM, BLUR_SEED)
-
-        # Save resulting dataframe
-        cli_alert_info("Saving file...")
-        write_csv(anonym_eni500_df, ENI500_PATH_PREPROCESSED)
-        cli_alert_success("Modified ENI 500 file saved!\n\n")
-    }
-}
-
 preprocess_raster <- function(
         raster_path,
         save_to_basename) {
@@ -300,7 +228,7 @@ show_save_results <- function() {
     if (cleaned_answer %in% c("y", "yes")) {
         cli_alert_info("Showing plots to the user.")
         cli_alert_warning(paste0(
-            "All figures automatically are saved as .pdf inside '", 
+            "All figures are automatically saved as .pdf inside '", 
             PATH_DATA_FIGURES, "' ."))
 
         
@@ -445,12 +373,6 @@ show_save_results <- function() {
 
 ##### Transformation of raw datasets ##### ------------------------------------
 if (exists("BLUR_SEED")) {
-    # 1. Biodicapt dataset
-    . <- preprocess_biodicapt_dataset()
-
-    # 2. 500 eni dataset
-    . <- preprocess_eni500_dataset()
-
     # 3. Corine Land Cover dataset
     . <- before_preprocessing_corine_raster(
         raster_path = CORINE_FILEPATH,
@@ -486,8 +408,8 @@ if (exists("BLUR_SEED")) {
 } else {
     cli_alert_warning(paste0(
         "Variable 'BLUR_SEED' is not available, ",
-        "you are likely running this script without raw datasets installed. ",
-        "Skipping pre-processing (will only be showing figures)."))
+        "you are likely running this script without raw datasets available...",
+        "In this case, pre-processing is not necessary. Skipping."))
 }
 
 ##### Check results ##### -----------------------------------------------------

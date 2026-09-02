@@ -84,7 +84,7 @@ authorize_overwrite <- function(path) {
 # ARGS:
 #   - xlsx_paths: a list of .xlsx files.
 # WARNING: this function will only work correctly for biodicapt files.
-import_biodicapt_land_surveys <- function(xlsx_paths) {
+LEGACY_import_biodicapt_land_surveys <- function(xlsx_paths) {
     
     # loop on all files and store in list
     map_dfr(xlsx_paths, function(path) {
@@ -147,6 +147,14 @@ blur_coordinates <- function(df, x_lon, y_lat, res_km, seed = NULL) {
     if (!is.null(seed)){
         set.seed(seed) 
     }
+
+    # if sf object, remove geometry field (we're gonna make a new one)
+    is_sf <- inherits(df, "sf")
+    if (is_sf) {
+        crs_orig <- sf::st_crs(df)
+        geom_col <- attr(df, "sf_column")
+        df <- sf::st_drop_geometry(df) 
+    }
   
     # Manual check of coordinate system (CRS 4326)
     if (    !between(min(df[[x_lon]]), LON_MIN, LON_MAX) ||
@@ -165,11 +173,20 @@ blur_coordinates <- function(df, x_lon, y_lat, res_km, seed = NULL) {
     res_lon   <- res_km / (111.0 * cos(lat_mean * pi / 180))
 
     # Dividing by 1.96 so ~95% of points stay within a circle of res_km 
-    df |>
+    df <- df |>
         mutate(
             "{x_lon}" := .data[[x_lon]] + rnorm(dplyr::n(), mean = 0, sd = res_lon / 1.96),
             "{y_lat}" := .data[[y_lat]] + rnorm(dplyr::n(), mean = 0, sd = res_lat / 1.96)
         )
+    
+    # make a new "geometry" column
+    if (is_sf) {
+        df <- st_as_sf(
+            df, coords = c(x_lon, y_lat), crs = crs_orig, remove = FALSE)
+        names(df)[names(df) == "geometry"] <- geom_col
+        st_geometry(df) <- geom_col
+    }
+    return(df)
 }
 
 # A function that creates an empty raster that matches France's extent (WGS 84)

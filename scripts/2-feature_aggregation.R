@@ -13,9 +13,12 @@ library(sf)
 suppressPackageStartupMessages(source(here::here(file.path("R", "utils_figures.R"))))
 
 
-
 ##### Parameters ##### --------------------------------------------------------
 source(here::here(file.path("data","config","config.R"))) # Global parameters
+if (file.exists(file.path("data", "config", "seed.R"))) {
+    # seed is hidden for confidentiality of data points
+    source(here::here(file.path("data", "config", "seed.R"))) 
+}
 
 # biodicapt dataset
 BIODICAPT_PATH_PREPROCESSED <- file.path(PROCESSED_DATA_PATH, 
@@ -47,6 +50,45 @@ CHELSA_SHP_PATHS <- file.path(
 
 
 ##### Helper functions ##### --------------------------------------------------
+preprocess_biodicapt_dataset <- function() {
+    cli_alert_info("Pre-processing of BIODICAPT dataset.")
+    # load file and remove useless columns
+    biodicapt_df <- read_csv(
+        file.path(BIODICAPT_FOLDER, BIODICAPT_FILENAME),
+        show_col_types = FALSE)
+    
+    # Rename coordinates columns
+    biodicapt_df <- biodicapt_df |> rename(LON = Longitude, LAT = Latitude)
+    cli_alert_success("Dataset is ready!\n\n")
+
+    return(biodicapt_df)
+}
+
+preprocess_eni500_dataset <- function() {
+    cli_alert_info("Pre-processing of 500 ENI dataset.")
+
+    # preprocess file if authorized
+    cli_alert_info("Loading 500 ENI files...")
+
+    # load file and remove useless columns
+    eni500_df <- read_csv(
+        file.path(ENI500_FOLDER, ENI500_FILENAME),
+        show_col_types = FALSE)
+    cols_to_remove <- c(
+        "lieu_dit", "code_postal", "pourcent_pente", "id_parcelle",
+        "commentaire_parcelle", "derniere_modif_parcelle_par", "commune",
+        "derniere_modif_parcelle_le", "derniere_modif_donnees_agro_par",
+        "derniere_modif_donnees_agro_le", "derniere_modif_pratiques_par",
+        "derniere_modif_pratiques_le", "code_parcelle", "nom_parcelle")
+    eni500_df <- eni500_df |> select(-any_of(cols_to_remove))
+
+    # Rename coordinates columns
+    eni500_df <- eni500_df |> rename(LON = X, LAT = Y)
+    cli_alert_success("Dataset is ready!\n\n")
+
+    return(eni500_df)
+}
+
 load_group_clc_chelsa_sf <- function() {
 
     if (!authorize_overwrite(MASTER_SF_PATH)) {
@@ -164,6 +206,51 @@ save_features_from_obs <- function(filepath, save_to) {
     }
 }
 
+save_features_from_sensitive_obs <- function(df, save_to) {
+    if (!authorize_overwrite(save_to)) {
+        # Check if file exists
+        cli_alert_warning(paste0("Skipping the addition of features to ", 
+        basename(save_to), ".\n\n"))
+
+    } else {
+        # load presence-absence observations
+        cli_alert_info(paste0("Conversion to shapefile..."))
+        points <- st_as_sf(
+            df, coords = c("LON", "LAT"), crs = 4326, remove = FALSE)
+
+        # Loaad features
+        cli_alert_info("Loading master shapefile...")
+        master_sf <- st_read(MASTER_SF_PATH, quiet = TRUE)
+        
+        # Append table with master_sf features
+        cli_alert_info("Adding features to dataset...")
+        master_df <- st_join(points, master_sf, join = st_within)
+
+        # Quick check : compare the geometry of the cells in each shapefile (detects mismatchs)
+        all_points_in_hexagons <- all(!is.na(master_df$CLC))
+        if (all_points_in_hexagons) {
+            cli_alert_success(paste0("Sanity check: no observations ",
+            "outside of shapefile hexagons.\n\n"))
+            cli_alert_info("Saving dataset with features...")
+
+        } else {
+            stop(paste0("Sanity check: some observations are outside of the",
+            " study area (master shapefile)."))
+        }
+
+        # replace raw coordinates with blurred coordinates
+        cli_alert_info("Data anonymization...")
+        anonym_df <- blur_coordinates(
+            master_df, "LON", "LAT", RES_KM, BLUR_SEED)
+
+        # Save resulting dataframe
+        cli_alert_info("Savong file...")
+        st_write(anonym_df, save_to, quiet = TRUE, delete_dsn=TRUE)
+
+        cli_alert_success("Saved anonymized dataset with features!")
+        return(anonym_df)
+    }
+}
 
 ##### Formatting shapefile data ##### -----------------------------------------
 . <- load_group_clc_chelsa_sf()
@@ -171,8 +258,15 @@ save_features_from_obs <- function(filepath, save_to) {
 
 ##### Formatting observation data ##### ---------------------------------------
 . <- save_features_from_obs(
-    filepath=BIODICAPT_PATH_PREPROCESSED, save_to=BIODICAPT_OBS_FULL)
-. <- save_features_from_obs(
-    filepath=ENI500_PATH_PREPROCESSED, save_to=ENI500_OBS_FULL)
-. <- save_features_from_obs(
     filepath=STOC_PATH_PREPROCESSED, save_to=STOC_OBS_FULL)
+
+##### Formatting SENSITIVE observation data ##### -----------------------------
+
+# what I want to do :
+# - replace file saving with blurr_and_save
+BIODICAPT_df <- preprocess_biodicapt_dataset() 
+. <- save_features_from_sensitive_obs(
+    df=BIODICAPT_df, save_to=BIODICAPT_OBS_FULL)
+ENI500_df <- preprocess_biodicapt_dataset() 
+. <- save_features_from_sensitive_obs(
+    df=ENI500_df, save_to=ENI500_OBS_FULL)

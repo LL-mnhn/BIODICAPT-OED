@@ -13,6 +13,8 @@ data/preprocessed_data/*
 !data/preprocessed_data/.gitkeep
 !data/preprocessed_data/BIODICAPT_*
 !data/preprocessed_data/ENI500_*
+!data/preprocessed_data/anonymised_BIODICAPT_*
+!data/preprocessed_data/anonymised_ENI500_*
 !data/preprocessed_data/STOC_*
 !data/preprocessed_data/CLC2018_*
 !data/preprocessed_data/MASTER_*

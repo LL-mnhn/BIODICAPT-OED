@@ -10,7 +10,7 @@ source(here::here(file.path("data", "config", "config.R"))) # Global parameters
 
 
 ##### Helper functions #####
-check_biodicapt_files <- function() {
+LEGACY_check_biodicapt_files <- function() {
     cli_alert_info("Checking BIODICAPT files...")
 
     # The folder...
@@ -35,6 +35,30 @@ check_biodicapt_files <- function() {
     cli_alert_success("Raw BIODICAPT files are available.\n\n")
 }
 
+check_biodicapt_files <- function() {
+    cli_alert_info("Checking BIODICAPT files...")
+
+    # The folder...
+    if (!file.exists(BIODICAPT_FOLDER)) {
+        cli_alert_danger(
+            paste0("Folder '", BIODICAPT_FOLDER, "' was not found!\n"))
+        stop("Tip: did you create the necessary folders for the files?")
+    }
+    
+    # ...must contain 1 file with the following name :
+    if (!file.exists(file.path(BIODICAPT_FOLDER, BIODICAPT_FILENAME))) {
+        cli_alert_danger(paste0(
+            "File '", BIODICAPT_FILENAME, 
+            "' was not found in '", BIODICAPT_FOLDER,"'!\n"))
+        cli_alert_warning(paste(
+            "This dataset can only be obtained from the coordinators",
+            "of the BIODICAPT project. Contact them directly."))
+        stop("Tip: these files must be downloaded manually.")
+    }
+
+    cli_alert_success("Raw BIODICAPT file is available.\n\n")
+}
+
 check_eni500_files <- function() {
     cli_alert_info("Checking 500 ENI file...")
 
@@ -47,10 +71,12 @@ check_eni500_files <- function() {
     
     # ...must contain 1 file with the following name :
     if (!file.exists(file.path(ENI500_FOLDER, ENI500_FILENAME))) {
-        cli_alert_danger(paste0("File '", filename, "' was not found in '", 
-            ENI500_FOLDER,"'!\n"))
-        cli_alert_warning(paste0("This dataset can only be obtained from ", 
-        "the coordinators of the 500 ENI network. Contact them directly."))
+        cli_alert_danger(paste0(
+            "File '", ENI500_FILENAME, 
+            "' was not found in '", ENI500_FOLDER,"'!\n"))
+        cli_alert_warning(paste0(
+            "This dataset can only be obtained from the coordinators ", 
+            "of the 500 ENI network. Contact them directly."))
         stop("Tip: this file must be downloaded manually (the version with NAs removed).")
     }
     
@@ -118,13 +144,9 @@ check_species_data <- function() {
 
 ##### Verify each dataset ##### -----------------------------------------------
 cli_alert_danger(paste0(
-    "This script can only be run on raw datasets, it should not be run ",
-    "on external machines"))
+    "Are you running this script with raw dataset available?"))
 cli_alert_warning(paste0(
-    "-> If you are running this file with raw datasets ",
-    "available, you can safely ignore this warning."))
-cli_alert_warning(paste0(
-    "-> If you cloned this repository from GitHub, ",
+    "↳ If you cloned this repository from GitHub, ",
     "ignore the outputs of this script and begin usage with ",
     "`1-pre_processing.R`\n\n"))
 

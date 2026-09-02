@@ -31,13 +31,7 @@ RESULTS_PATH <- file.path(WORK_DIR, "outputs", "results")
 ## Raw data
 # BIODICAPT Dataset
 BIODICAPT_FOLDER <- file.path(RAW_DATA_PATH, "BIODICAPT_pos")
-BIODICAPT_FILENAMES <- c(
-    "BIODICAPT_parcelles_MONTPELLIER.xlsx", 
-    "Preselection_Parcelles_BIODICAPT_DYNAFOR.xlsx", 
-    "Preselection_Parcelles_BIODICAPT_SCARABEE.xlsx", 
-    "Preselection_Parcelles_BIODICAPT_VCG.xlsx", 
-    "Preselection_Parcelles_BIODICAPT_ZAAR.xlsx"
-)
+BIODICAPT_FILENAME <- "parcelles_selectionnees.csv"
 
 # 500 ENI Dataset
 ENI500_FOLDER <- file.path(RAW_DATA_PATH, "500ENI_pos")
@@ -63,10 +57,12 @@ MASTER_SF_PATH <- file.path(
     paste0("MASTER_", OBS_YEAR, "_projection_france_hexagons_res", RES_KM, "km-WGS84.gpkg"))
 BIODICAPT_OBS_FULL <- file.path(
     PROCESSED_DATA_PATH, 
-    paste0("BIODICAPT_", OBS_YEAR, "_obs_features_res", RES_KM, "km-WGS84.csv"))
+    paste0("anonymised_BIODICAPT_", OBS_YEAR, "_obs_features_res", RES_KM, 
+    "km-WGS84.csv"))
 ENI500_OBS_FULL <- file.path(
     PROCESSED_DATA_PATH, 
-    paste0("ENI500_", OBS_YEAR, "_obs_features_res", RES_KM, "km-WGS84.csv"))
+    paste0("anonymised_ENI500_", OBS_YEAR, "_obs_features_res", RES_KM, 
+    "km-WGS84.csv"))
 STOC_OBS_FULL <- file.path(
     PROCESSED_DATA_PATH, 
     paste0("STOC_", OBS_YEAR, "_obs_features_res", RES_KM, "km-WGS84.csv"))
