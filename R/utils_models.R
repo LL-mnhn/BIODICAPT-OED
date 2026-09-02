@@ -28,24 +28,30 @@ source(here::here("data/config/config.R")) # Import global parameters
 #   - combination: a list of parameters.
 #   - k_fold: a numeric.
 make_run_path <- function(folder, combination, k_fold) {
-    # check that there is at must one parameter with a list of values
+    # check that there is at MUST one parameter with a list of values
     if (sum(lapply(combination, length) > 1) > 1) {
+        # more than one parameter with a list of values : 
+        # -> I have not setup this so... This should definetly not happen.
         stop(paste(
             "Error in combination, found more than one parameter",
             "with a vector of values of length > 1."
         ))
     } else if (sum(lapply(combination, length) > 1) == 1) {
+        # exatcly one, perfect: select the associated parameter's name
         loop_on <- names(which(lapply(combination, length) > 1))
         cli_alert_info(paste(
             "Auto-selection of parameter to loop on:", loop_on))
     } else {
-        # dummy loop name
+        # none parameter with a list of value: assign a harmless one
         loop_on <- "TRAIN_SIZES"
     }
 
+
+    # Every parameter has one element, except 'loop_on'
+    # for each element in 'loop_on' the path is different
     run_paths <- c()
     for (loop_element in combination[[loop_on]]) {
-        # initialize list of new parameters for each iteration
+        # For each new iteration, reset the parameters to use.
         local_com <- list()
         local_com$R_EFFECTS <- combination$R_EFFECTS
         local_com$STRATEGIES <- combination$STRATEGIES
@@ -53,7 +59,10 @@ make_run_path <- function(folder, combination, k_fold) {
         local_com$TRAIN_SIZES <- combination$TRAIN_SIZES
         local_com$HMSC_XFORMULAS <- combination$HMSC_XFORMULAS
 
-        # overwrite with loop_on name (replaces list by current iteration item)
+        # Overwrite parameter with multiple elements with one element 
+        # (the one from the current iteration)
+        # + check: if parameter is a formula, transform it to 
+        # the number of variables in the formula
         local_com[[loop_on]] <- loop_element
             if (is.list(local_com$HMSC_XFORMULAS)) {
                 if (is_formula(local_com$HMSC_XFORMULAS[[1]])) {
@@ -80,6 +89,7 @@ make_run_path <- function(folder, combination, k_fold) {
             local_com$STRATEGIES <- 'none'
         }     
         
+        # Create path string and add it to the list
         run_paths <- c(
             run_paths,
             file.path(
@@ -120,87 +130,108 @@ build_param_grid <- function(combinations) {
 
 # A function to prepare dataset for Hmsc training, outputs a model template
 # ARGS:
-#   - subset: a dataframe. Must contain columns listed in x_cols and y_cols.
+#   - subdataset: a dataframe. Must contain columns listed in x_cols and y_cols.
 #   - x_cols: a list of strings. The columns containing explanatory variables.
 #   - y_cols: a list of strings. The columns containing species occurrences.
 #   - formula: a formula for the Hmsc model. Based on names in x_cols/y_cols.
 #   - random_effect: whether to add 
-#       a random effect to Hmsc ("units" or "spatial") 
+#       a random effect to Hmsc ("points", "carres" or "spatial") 
 #       or not ("none", default).
 prepare_hmsc_training <- function(
-        subset, x_cols, y_cols, formula, random_effect = "none"){
+        subdataset, x_cols, y_cols, formula, random_effect = "none"){
     cli_alert_info("Preparing training set for HMSC...")
 
-    # Hmsc only accepts data in a very specific format
-    ydata <- as.matrix(subset[y_cols]) 
+    # Format y and x data to a format that Hmsc accepts.
+    ydata <- as.matrix(subdataset[y_cols]) 
     xdata <- as.data.frame(setNames(
-        lapply(x_cols, function(col) subset[[col]]),
+        lapply(x_cols, function(col) subdataset[[col]]),
         x_cols)
     )
     studyDesign <- data.frame(
-        units = as.factor(subset$point), 
-        spatial = as.factor(subset$id_point_annee)
+        points = as.factor(subdataset$point), 
+        carres = as.factor(subdataset$carre), 
+        spatial = as.factor(subdataset$id_point_annee)
     )
 
-    
+    # Depending on the random effect, the model has to be set up differently
+    # FYI: here, we use occurence data. For that, a "probit" distribution is
+    # the most logical option (but others are available such as "normal",
+    # "poisson", "lognormal poisson")
     if (random_effect == "none") {
+        # No effect: easy, do not add anything to the model.
         cli_alert_info("Creation of Hmsc object without random effects...")
         hmsc_object <- Hmsc(
             Y = ydata, XData = xdata, 
             XFormula = formula, 
-            distr = "probit",           # For occurence data (among "normal", "probit", "poisson", "lognormal poisson")
+            distr = "probit",           
             studyDesign = studyDesign)
+   
         
-    } else if (random_effect == "units") {
+    } else if ((random_effect == "points") | (random_effect == "carres")) {
+        # Random effect as "unit": points are grouped by squares (carres) or 
+        # by single point observation. This assumes independant random effect
+        # for each unit. Much faster to compute than rL.spatial but it means
+        # that squares not sampled have no random effected fitted to them.
         cli_alert_info("Creation of Hmsc object with 'units' effect...")
-        # a random effect associated to each point
-        rL.points = HmscRandomLevel(units = unique(studyDesign$point))  # random point effect
-        rL.points = setPriors(rL.points, nfMin =1,  nfMax = 1)          # limit number of latent variables
+        rL.units = HmscRandomLevel(
+            units = unique(studyDesign[[random_effect]])) # random unit effect 
+        rL.units = setPriors(
+            rL.units, nfMin =1,  nfMax = 1) # limit number of latent variables
         hmsc_object <- Hmsc(
             Y = ydata, XData = xdata, 
-            ranLevels = list("units" = rL.points),
+            ranLevels = setNames(list(rL.units), random_effect),
             XFormula = formula, 
-            distr = "probit",           # For occurence data
+            distr = "probit",
             studyDesign = studyDesign)
 
+        
     }  else if (random_effect == "spatial") {
+        # Random effect as "spatial": we consider the coordinates of each point
+        # sampled. The random effect is a function of the distance between the
+        # points. Takes more time to compute but (usually), yields to better 
+        # results in prediction.
         cli_alert_info("Creation of Hmsc object with 'spatial' effect...")
         # convert coordinates to metric
         coords_sf <- st_as_sf(
-            subset, 
+            subdataset, 
             coords = c("LON", "LAT"), 
             crs = 4326)
         coords_proj <- st_transform(coords_sf, crs = 2154)
 
+        # associate coordinate to the name of each sampled point
         xy <- st_coordinates(coords_proj)
-        rownames(xy) <- as.character(subset$id_point_annee)
+        rownames(xy) <- as.character(subdataset$id_point_annee)
         colnames(xy) <- c("longitude_grid_2154", "latitude_grid_2154")
-        xy_spatial <- xy[!duplicated(rownames(xy)), ]
 
-        if (nrow(xy_spatial) < 999) {
-            rL.spatial <- HmscRandomLevel(sData = xy_spatial)
-        } else {
-            # too many samples, need optimization for faster computation
-            rL.spatial <- HmscRandomLevel(
-                sData = xy_spatial, sMethod = "NNGP", nNeighbours = 10)
+        # There should be one observation per point (because i_point_annee)
+        # but we must make sure or else Hmsc will fail.
+        if (any(duplicated(xy))) {
+            stop("Duplicate coordinates found across distinct points; check LON/LAT data.")
+            # xy <- xy[!duplicated(rownames(xy)), ] # quick fix for this error
         }
-        rL.spatial = setPriors(rL.spatial, nfMin =1,  nfMax = 1)    # limit number of latent variables
-
-        # # Cover 100m to ~1000km (on a log scale)
-        # alpha_values <- c(0, exp(seq(log(1e2), log(1e6), length.out = 9)))
-        # alphapw <- cbind(
-        #   alpha_values, rep(1/length(alpha_values), length(alpha_values)))
+        
+        # There are two possibilities : map the entire grid of points or use
+        # nearest neighbour approximation. After ~1000 points its better to use
+        # the approximation for faster computation.
+        if (nrow(xy_spatial) < 1000) {
+            rL.spatial <- HmscRandomLevel(sData = xy)
+        } else {
+            rL.spatial <- HmscRandomLevel(
+                sData = xy, sMethod = "NNGP", nNeighbours = 10)
+        }
+        rL.spatial = setPriors(
+            rL.spatial, nfMin =1,  nfMax = 1) # limit number of latent variables
 
         hmsc_object <- Hmsc(
             Y = ydata, XData = xdata, 
             ranLevels = list("spatial" = rL.spatial),
             XFormula = formula, 
-            distr = "probit",                           # For occurence data
+            distr = "probit",
             studyDesign = studyDesign)
 
     } else {
-        stop(paste0(paste0("Random effect must be one of 'none', 'units' or",
-        " 'spatial'. Got ", random_effect)))
+        stop(paste0("Random effect must be one of 'none', 'points',", 
+        " 'carres', or 'spatial'. Got ", random_effect))
     }
 
     cli_alert_success("Created Hmsc object!\n\n")
@@ -230,29 +261,31 @@ fitting_hmsc <- function(
     freq_verbose = 100,
     allow_parallel = TRUE,
     save_to = NULL) {
-    # Fit model
+    # Start clock to get runtime
     start <- Sys.time()
     cli_alert_info(paste0("Started fitting at: ", start))
 
+    # When HMSC runs chains in parallel, it does not show progress bar
+    # Since I was expecting some update messages during the runs at first, 
+    # its probably better to print some warning messages.
     if (!is.null(freq_verbose) & (nchains > 1) & allow_parallel) {
         cli_alert_warning(paste0("Cannot display fitting progress when running",
         " chains in parallel."))
         cli_alert_warning("Set `allow_parallel` to `FALSE` to see progress.")
     }
 
-    if (allow_parallel) {
-        fitted.hmsc <-  sampleMcmc(
-            hM, 
-            thin = thin, samples = nsamples, transient = ntransient, 
-            nChains = nchains, nParallel = nchains, updater=list(GammaEta=FALSE),
-            verbose = freq_verbose)
-    } else {
-        fitted.hmsc <-  sampleMcmc(
-            hM, 
-            thin = thin, samples = nsamples, transient = ntransient, 
-            nChains = nchains, nParallel = 1, updater=list(GammaEta=FALSE),
-            verbose = freq_verbose)
-    }
+    # Depending on allow_parallel = TRUE/FALSE, overwrite nParallel
+    fitted.hmsc <-  sampleMcmc(
+        hM, 
+        thin = thin, 
+        samples = nsamples, 
+        transient = ntransient, 
+        nChains = nchains, 
+        nParallel = if (allow_parallel) nchains else 1, 
+        updater=list(GammaEta=FALSE),
+        verbose = freq_verbose)
+    
+    # Print runtime
     stop <- Sys.time()
     cli_alert_info(paste0("Completed fitting at: ", stop))
     cli_alert_info(paste0("Time elapsed: ", round(stop-start, 2)))
@@ -273,22 +306,26 @@ fitting_hmsc <- function(
 #   - thin: a numeric. The number of steps between each recording of a sample.
 #   - save_folder: a string. The path where plotted PDFs will be saved.
 convergence_hmsc <- function(hM, nchains, thin, save_folder) {
+    # Hmsc object can be (and should be) converted to the commonly used Coda
+    # format in Bayesian statistics.
     coda_outputs <- convertToCodaObject(hM)
     
-    # Summary plots (not utilized here but they could be!)
+    # Summary plots (not necessary here but might be useful one day):
     # MCMCsummary(object = coda_outputs$Beta, round = 2) 
     # MCMCplot(object = coda_outputs$Beta)
 
-    # For HMSC parameters are named, we are interested in:
+    # HMSC has many parameters, in our case we are only interested in:
     #   - Beta: fixed effects
     #   - Omega: random variation in co-occurence
     for (param in c("Beta", "Omega")) {
+        # skip if name not in parameters (e.g. no omega if no random effect)
         if (!(param %in% names(coda_outputs))) {
             next
         } 
         cli_alert_info(paste0("*** [Parameter: ", param, "] ***"))
 
         ### Convergence diagnostics
+        # Convert Omega output to match Beta format
         if (param == "Omega") {
             chains <- coda_outputs$Omega[[1]]  # 3D array: [iter, sp, sp]
         } else {
@@ -297,7 +334,7 @@ convergence_hmsc <- function(hM, nchains, thin, save_folder) {
         
         ## Traceplot (Rhat and effective size)      
         cli_alert_info("Computation of traceplots, can take some time...")
-        # faster version:
+        # Fast version:
         tryCatch({ # avoids debugger mode
             MCMCtrace(
                 object = chains,
@@ -308,14 +345,14 @@ convergence_hmsc <- function(hM, nchains, thin, save_folder) {
                 ind = TRUE,
                 open_pdf = FALSE,
                 plot = TRUE,
-                Rhat = TRUE, # ajoute le Rhat
-                n.eff = TRUE, # ajoute la taille d’échantillon effective
-                type = "both"   # explicitly request trace + density
+                Rhat = TRUE, 
+                n.eff = TRUE, 
+                type = "both" # explicitly request trace + density
             )}, 
         error = function(e) {
             message("Error in MCMCtrace: ", e$message)
         })
-        # # Slower but more beautiful version
+        # # Slower but "more beautiful" version
         # traceplots <- ggplot_custom_MCMCtrace(
         #     coda_object = coda_fitted_model$Beta,
         #     show_Rhat = TRUE,
@@ -418,9 +455,10 @@ evaluate_hmsc_performances <- function(hM, subset, x_cols, sp_cols) {
         hM = hM, 
         df = subset, 
         x_variables = x_cols)
-    local_preds <- abind(local_preds_list, along = 3)
-
-    local_Y <- as.matrix(subset[sp_cols])  # actual observed values for test set
+    local_preds <- abind(local_preds_list, along = 3) # model predictions
+    local_Y <- as.matrix(subset[sp_cols])             # actual observations
+    
+    # Extract metric by comparing predictions and observed values
     evaluateModelFitCustom(hM = hM, Y = local_Y, predY = local_preds)
 }
 
@@ -721,21 +759,22 @@ interpret_diagnostics <- function(
 
 }
 
-# A function that wraps the process to make predictions with a hmsc model.
+# A function that automates the process of making predictions with Hmsc models.
 # ARGS:
 #   - hM: a Hmsc fitted model object.
 #   - df: a dataframe with columns "point", "id_point_annee" 
 #       and names in x_variables.
 #   - x_variables: a list of strings. The names of columns to keep in data.
 predict_hmsc <- function(hM, df, x_variables) {
-    # Format explanatory variables
+    # Format explanatory variables to Hmsc expected format
     XData <- as.data.frame(setNames(
         lapply(x_variables, function(col) df[[col]]),
         x_variables))
     
     # Format study design (grouping of samples together)
     studyDesign <- data.frame(
-        units = as.factor(df$point), 
+        points = as.factor(df$point), 
+        carres = as.factor(df$carre), 
         spatial = as.factor(df$id_point_annee)
     )
 
@@ -754,27 +793,29 @@ predict_hmsc <- function(hM, df, x_variables) {
 #   - predY: the predictions made by the model.
 evaluateModelFitCustom <- function(hM, Y, predY) {
 
-    ns <- ncol(Y)
-    mPredY <- apply(predY, c(1, 2), mean)  # posterior mean prediction per obs/species
+    ns <- ncol(Y) # number of samples per observation/species
+    mPredY <- apply(predY, c(1, 2), mean) # mean prediction per obs/species
 
-    RMSE <- rep(NA, ns)     # RMSE, the lower the better (corr with AUC)
+    # Initialise metrics to compute
+    RMSE <- rep(NA, ns)     # RMSE (the lower the better)
     AUC <- rep(NA, ns)      # AUC (the closer to 1, the better)
     TjurR2 <- rep(NA, ns)   # Tjur R² (% of variance explained)
 
+    # For each sample
     for (j in seq_len(ns)) {
-        sel <- !is.na(Y[, j])
-        obs <- Y[sel, j]
-        pred <- mPredY[sel, j]
+        sel <- !is.na(Y[, j])   # extract observations/species
+        obs <- Y[sel, j]        # get observed value
+        pred <- mPredY[sel, j]  # get predicted value
 
-        # RMSE
+        # compute RMSE
         RMSE[j] <- sqrt(mean((obs - pred)^2))
 
-        # AUC (only meaningful if both 0s and 1s present)
+        # compute AUC (only meaningful if both 0s and 1s present)
         if (length(unique(obs)) == 2) {
             AUC[j] <- as.numeric(pROC::auc(obs, pred, quiet = TRUE))
         }
 
-        # Tjur R2: difference in mean predicted probability between
+        # compute Tjur R2: difference in mean predicted probability between
         # presences and absences
         if (length(unique(obs)) == 2) {
             TjurR2[j] <- mean(pred[obs == 1]) - mean(pred[obs == 0])
@@ -782,7 +823,6 @@ evaluateModelFitCustom <- function(hM, Y, predY) {
     }
 
     names(RMSE) <- names(AUC) <- names(TjurR2) <- colnames(Y)
-
     return(list(RMSE = RMSE, AUC = AUC, TjurR2 = TjurR2))
 }
 
@@ -793,13 +833,14 @@ evaluateModelFitCustom <- function(hM, Y, predY) {
 #       and names in x_variables.
 #   - x_variables: a list of strings. The names of columns to keep in data.
 get_uncertainty_hmsc <- function(hM, df, x_cols) {
+    # Get predictions
     predicted_occurrences <- predict_hmsc(
         hM = hM, df = df, x_variables = x_cols)
-    # predicted_lists contains a list of length = number of samples.
-    # for each sample, we get a matrix of n_obs x n_species
     
-    # Here, we define uncertainty as the average of the standard deviation 
-    # accross observed species:
+    # predicted_occurrences contains a list of length = number of samples.
+    # for each sample, we get a matrix of n_obs x n_species
+    # HERE, WE DEFINE UNCERTAINTY AS
+    # the average of the standard deviation accross observed species
     sd_point_sp <- apply(simplify2array(predicted_occurrences), c(1,2), sd)
     uncertainty_per_point <- as_tibble(sd_point_sp) |> 
         mutate(average_sd = rowMeans(across(everything())))
@@ -823,7 +864,7 @@ abbreviate_loop_labels <- function(x) {
     })
 }
 
-# A function that prints the plot optionally saves it, and emits cli messages.
+# A function that prints the plot, optionally saves it, and emits cli messages.
 # ARGS:
 #   - p: a ggplot object.
 #   - save_to: a string. A path which should end with .pdf. 
@@ -847,44 +888,57 @@ finalize_plot <- function(p, what = "performances", save_to = NULL) {
 #       Default is NULL (output all dataframe). 
 #       If a metric is given, outputs only the column of that metric.
 load_metric_scores <- function(run_path, subset_name, metric) {
-    # SECURITY : run logical check before importation of scores
+    # SECURITY : auto-fetches name of the strategy and number of new samples
+    # if strategy and new sample mismatch, stop functions
+    # I have quick fixes ready in comments but these checks are handled sooner
+    # now, and should not happen here in the new versions of the script.
     pattern_strategy <- "strategy-([^_]+)_new"
     pattern_new_samples <- "new-samples-([^_]+)_training"
-
     extracted_strategy <- regmatches(
         run_path, regexec(pattern_strategy, run_path))[[1]][2]
     extracted_new_samples <- regmatches(
         run_path, regexec(pattern_new_samples, run_path))[[1]][2]
-
     if (extracted_strategy == "none") {
         if (extracted_new_samples != "0") {
-            cli_alert_warning(paste0(
+            stop(paste0(
                 "Found unconsistent number of new samples '", 
                 extracted_new_samples, "' for strategy '", 
-                extracted_strategy , "'. Replacing by '0'."))
-            run_path <- sub(
-                pattern_new_samples, "new-samples-0_training", 
-                run_path)
+                extracted_strategy , "'."))
+            # # Fix (LEGACY)
+            # cli_alert_warning(paste0(
+            #     "Found unconsistent number of new samples '", 
+            #     extracted_new_samples, "' for strategy '", 
+            #     extracted_strategy , "'. Replacing by '0'."))
+            # run_path <- sub(
+            #     pattern_new_samples, "new-samples-0_training", 
+            #     run_path)
         }
     }
     if (extracted_new_samples == "0") {
         if (extracted_strategy != "none") {
-            cli_alert_warning(paste0(
+            stop(paste0(       
                 "Found unconsistent strategy name '", 
                 extracted_strategy, "' for number of new samples '", 
-                extracted_new_samples , "'. Replacing by 'none'."))
-            run_path <- sub(
-                pattern_strategy, "strategy-none_new", 
-                run_path)
+                extracted_new_samples , "'."))
+            # # Fix (LEGACY)
+            # cli_alert_warning(paste0(
+            #     "Found unconsistent strategy name '", 
+            #     extracted_strategy, "' for number of new samples '", 
+            #     extracted_new_samples , "'. Replacing by 'none'."))
+            # run_path <- sub(
+            #     pattern_strategy, "strategy-none_new", 
+            #     run_path)
         }
     }    
 
+    # Fetch file (suppress import messages)
     file_path <- file.path(run_path, paste0(subset_name, "_scores.csv"))
     df <- read_csv(file_path, show_col_types = FALSE)
 
-    # add MSE
+    # add MSE (RMSE is computed b default, MSE is RMSE squared)
     df$MSE <- df$RMSE^2
 
+    # output either full dataframe or single column vector
     if (is.null(metric)) {
         df
     } else if (metric %in% c("MSE", "RMSE", "AUC", "TjurR2")) {
@@ -970,13 +1024,14 @@ compute_score_diffs <- function(
         subset_names = c("train", "val", "test"),
         group_species = TRUE, species_names = NULL) {
 
+    # Auto load of reference and loop results
     loaded <- load_reference_and_other_scores(
         parent_folder, reference_model_combination, loop_model_combination, 
         loop_on, k_fold, metric, subset_names)
     ref_scores <- loaded$ref_scores
     other_scores <- loaded$other_scores
 
-    # Number of species = length of a score vector; build/validate names.
+    # Number of species = length of a score vector: build names.
     if (!group_species) {
         n_species <- length(ref_scores[[subset_names[1]]][[1]])
         if (is.null(species_names)) {
@@ -989,6 +1044,7 @@ compute_score_diffs <- function(
         }
     }
 
+    # For each element to loop on, store its score compared to reference
     loop_elements <- loop_model_combination[[loop_on]]
     scores_df <- tibble()
     raw_diffs_df <- tibble()
@@ -1072,6 +1128,8 @@ compute_score_diffs <- function(
     if (all(sapply(loop_elements, is_formula))) {
         loop_elements <- sort(sapply(sapply(loop_elements, all.vars), length))
     }
+
+    # Ensure right formatting (mainly that factors are notnumerics)
     scores_df <- scores_df |>
         mutate(loop_element = factor(loop_element, levels = loop_elements)) |>
         mutate(subset = factor(subset, levels = subset_names))
@@ -1079,6 +1137,7 @@ compute_score_diffs <- function(
         mutate(loop_element = factor(loop_element, levels = loop_elements)) |>
         mutate(subset = factor(subset, levels = subset_names))
 
+    # Add column for species if necessary
     if (!group_species) {
         scores_df <- scores_df |> 
             mutate(species = factor(species, levels = species_names))
@@ -1110,13 +1169,14 @@ compute_number_of_improvements <- function(
         subset_names = c("train", "val", "test"),
         species_names = NULL, proportion = 1/100) {
 
+    # Auto load of reference and loop results
     loaded <- load_reference_and_other_scores(
         parent_folder, reference_model_combination, loop_model_combination, 
         loop_on, k_fold, metric, subset_names)
     ref_scores <- loaded$ref_scores
     other_scores <- loaded$other_scores
 
-    # Number of species = length of a score vector; build/validate names.
+    # Number of species = length of a score vector: build names.
     n_species <- length(ref_scores[[subset_names[1]]][[1]])
     if (is.null(species_names)) {
         species_names <- paste0("species_", seq_len(n_species))
@@ -1127,6 +1187,7 @@ compute_number_of_improvements <- function(
         ))
     }
 
+    # For each element to loop on, store its score compared to reference
     loop_elements <- loop_model_combination[[loop_on]]
     prop_diffs_df <- tibble()
 
@@ -1183,6 +1244,8 @@ compute_number_of_improvements <- function(
     if (all(sapply(loop_elements, is_formula))) {
         loop_elements <- sort(sapply(sapply(loop_elements, all.vars), length))
     }
+
+    # Ensure right formatting (mainly that factors are notnumerics)
     prop_diffs_df <- prop_diffs_df |>
         mutate(loop_element = factor(loop_element, levels = loop_elements)) |>
         mutate(subset = factor(subset, levels = subset_names))
@@ -1225,6 +1288,10 @@ barplot_raw_scores <- function(
 
     cli_alert_info("Fetching scores...")
 
+    # No auto import of results in this function (mainly because I didnt need
+    # it at the time...)
+    # The following loop import each necessary scores.csv file and parse it 
+    # into a dataframe.
     run_paths <- make_run_path(
         parent_folder, loop_model_combination, "")
     loop_elements <- loop_model_combination[[loop_on]]
@@ -1260,15 +1327,16 @@ barplot_raw_scores <- function(
         }
     }
 
-    ### Aggregate
+    # Select the columns that should be kept in the final dataframe
     if (group_species) {
-        group_cols <- c("metric", "loop_element", "dataset")
+        # "species" column is not kept -> species are aggregated together
+        group_cols <- c("metric", "loop_element", "dataset") 
     } else {
         group_cols <- c("metric", "loop_element", "dataset", "species")
         scores_df <- scores_df |> 
             mutate(species = factor(species, levels = species_names))
     }
-
+    # aggregate rows together based on unique combinations of group_cols
     aggregated_df <- scores_df |>
         group_by(across(all_of(group_cols))) |>
         summarise(
@@ -1278,7 +1346,6 @@ barplot_raw_scores <- function(
         mutate(dataset = factor(dataset, levels = subset_names))
 
     cli_alert_info("Creating plot...")
-
     if (barplot) {
         aggregated_df <- aggregated_df |>
             mutate(loop_element = factor(loop_element, levels = loop_elements))
@@ -1317,10 +1384,13 @@ barplot_raw_scores <- function(
             "SD and mean computed per k_fold across k_fold, per species.")
     }
 
-    model_type <- ""
+    # format formula to number of variables
     temp_comb <- loop_model_combination
     temp_comb$HMSC_XFORMULAS <- lapply(lapply(
         loop_model_combination$HMSC_XFORMULAS, all.vars), length)
+    
+    # add model type to captions
+    model_type <- ""
     for (param in names(temp_comb)) {
         if (length(temp_comb[[param]]) > 1) {
             model_type <- paste0(
@@ -1331,7 +1401,6 @@ barplot_raw_scores <- function(
         }
     }
     model_type <- paste0(substr(model_type, 1, nchar(model_type)-3), ".")
-
     bottom_caption <- paste0(bottom_caption, "\nModel type: ", model_type)
 
     p <- p + 
@@ -1387,13 +1456,14 @@ boxplot_compare_scores <- function(
         species_names = NULL,
         save_to = NULL) {
 
+    # auto compute differences between reference scores and the other scores
     diffs <- compute_score_diffs(
         parent_folder, reference_model_combination, loop_model_combination,
         loop_on, k_fold, metric, subset_names, group_species, species_names)
     scores_df <- diffs$summary
     raw_diffs_df <- diffs$raw_diffs
 
-    # load reference values
+    # load reference values for display in captions
     refs_list <- list()
     for (subset_name in subset_names) {
         for (k in 1:k_fold) {
@@ -1421,7 +1491,6 @@ boxplot_compare_scores <- function(
             summarise(mean_score = mean(scores, na.rm = TRUE), .groups = "drop")
     }
 
-    
     # just to be sure
     if (!group_species) {
         scores_df <- scores_df |> 
@@ -1439,15 +1508,17 @@ boxplot_compare_scores <- function(
             "Distribution of per-fold differences across k_fold, per species.")
     }
 
-    ref_type <- ""
-    model_type <- ""
+    # format formula to number of variables
     temp_loop <- loop_model_combination
     temp_loop$HMSC_XFORMULAS <- lapply(lapply(
         temp_loop$HMSC_XFORMULAS, all.vars), length)
     temp_ref <- reference_model_combination
     temp_ref$HMSC_XFORMULAS <- lapply(lapply(
         temp_ref$HMSC_XFORMULAS, all.vars), length)
-
+    
+    # add model type to caption
+    ref_type <- ""
+    model_type <- ""
     for (param in names(temp_loop)) {
         if (length(temp_loop[[param]]) > 1) {
             model_type <- paste0(
@@ -1459,10 +1530,8 @@ boxplot_compare_scores <- function(
         ref_type <- paste0(
                 ref_type, tolower(param), "=", temp_ref[[param]], ", ")
     }
-
     model_type <- paste0(substr(model_type, 1, nchar(model_type)-2), ".")
     ref_type <- paste0(substr(ref_type, 1, nchar(ref_type)-2), ".")
-
     bottom_caption <- paste0(
         bottom_caption,
         "\nReference: ", ref_type, 
@@ -1542,6 +1611,7 @@ boxplot_sp_improvements <- function(
         xlabel = "Effect",
         save_to = NULL) {
 
+    # auto compute differences between reference scores and the other scores
     diffs <- compute_number_of_improvements(
         parent_folder = parent_folder, 
         reference_model_combination = reference_model_combination, 
@@ -1555,6 +1625,9 @@ boxplot_sp_improvements <- function(
     prop_diffs_df <- diffs$prop_diffs
     n_species <- diffs$n_species
 
+    # When boxes have less than 5 values, they can appear squashed
+    # for visualisation purposes, its a good idea to switch from fill to color 
+    # under this threshold.
     if (n_species <= 5) {
         p <- ggplot(
             prop_diffs_df, 
@@ -1565,10 +1638,7 @@ boxplot_sp_improvements <- function(
                 aes(y = improvements, x = loop_element, fill = subset))        
     }
  
-    bottom_caption <- paste("Number of species per box:", n_species, ".")
-    
-    ref_type <- ""
-    model_type <- ""
+    # format formula to number of variables
     temp_loop <- loop_model_combination
     temp_loop$HMSC_XFORMULAS <- lapply(lapply(
         temp_loop$HMSC_XFORMULAS, all.vars), length)
@@ -1576,6 +1646,10 @@ boxplot_sp_improvements <- function(
     temp_ref$HMSC_XFORMULAS <- lapply(lapply(
         temp_ref$HMSC_XFORMULAS, all.vars), length)
 
+    # create captions
+    ref_type <- ""
+    model_type <- ""
+    bottom_caption <- paste("Number of species per box:", n_species, ".")
     for (param in names(temp_loop)) {
         if (length(temp_loop[[param]]) > 1) {
             model_type <- paste0(
@@ -1587,10 +1661,8 @@ boxplot_sp_improvements <- function(
         ref_type <- paste0(
                 ref_type, tolower(param), "=", temp_ref[[param]], ", ")
     }
-
     model_type <- paste0(substr(model_type, 1, nchar(model_type)-2), ".")
     ref_type <- paste0(substr(ref_type, 1, nchar(ref_type)-2), ".")
-
     bottom_caption <- paste0(
         bottom_caption,
         "\nReference: ", ref_type, 
@@ -1608,6 +1680,7 @@ boxplot_sp_improvements <- function(
             "% in ", metric)) +
         xlab(xlabel)
 
+    # switch from fill to color if less than 5 species (see higher in function)
     if (n_species <= 5) {
         p <- my_custom_ggplot_theme(p, LIGHT = TRUE)  +
             scale_color_manual(values = c(PALETTE[2], PALETTE[3], PALETTE[1])) +
@@ -1657,11 +1730,15 @@ dotwhisker_model_scores <- function(
     loop_elements <- loop_model_combination[[loop_on]]
     if (is.numeric(loop_elements)) {
         stop(paste0(
-            "This function was not made to handle factors in 'loop_elements',",
+            "This function was made to handle factors in 'loop_elements',",
             " not numerics. For numerics, Try barplot_raw_scores() with ",
             "`barplot = FALSE` instead."))
     }
 
+    # No auto import of results in this function (mainly because I didnt need
+    # it at the time...)
+    # The following loop import each necessary scores.csv file and parse it 
+    # into a dataframe.
     run_paths <- make_run_path(
         parent_folder, loop_model_combination, "")
     cli_alert_info("Fetching scores...")
@@ -1703,6 +1780,7 @@ dotwhisker_model_scores <- function(
             mutate(species = factor(species, levels = species_names))
     }
 
+    # Ensure formatting of columns as factors
     scores_df <- scores_df |>
         mutate(k_fold = factor(k_fold)) |>
         mutate(loop_element = factor(loop_element, levels=loop_elements))
@@ -1749,10 +1827,13 @@ dotwhisker_model_scores <- function(
             "k_fold mean + 95% CI.")
     }
 
-    model_type <- ""
+    # format formula to number of variables
     temp_comb <- loop_model_combination
     temp_comb$HMSC_XFORMULAS <- lapply(lapply(
         loop_model_combination$HMSC_XFORMULAS, all.vars), length)
+
+    # add model type to captions
+    model_type <- ""
     for (param in names(temp_comb)) {
         if (length(temp_comb[[param]]) > 1) {
             model_type <- paste0(
@@ -1763,7 +1844,6 @@ dotwhisker_model_scores <- function(
         }
     }
     model_type <- paste0(substr(model_type, 1, nchar(model_type)-3), ".")
-
     bottom_caption <- paste0(bottom_caption, "\nModel type: ", model_type)
 
     p <- dwplot(model_list, 
@@ -1828,6 +1908,10 @@ lineplot_model_scores <- function(
     run_paths <- make_run_path(
         parent_folder, loop_model_combination, "")
 
+    # No auto import of results in this function (mainly because I didnt need
+    # it at the time...)
+    # The following loop import each necessary scores.csv file and parse it 
+    # into a dataframe.
     cli_alert_info("Fetching scores...")
     scores_df <- data.frame()
     for (k in seq(k_fold)) {

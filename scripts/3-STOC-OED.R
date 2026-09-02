@@ -89,7 +89,7 @@ COMBINATIONS <- list(
     # Add random effects
     list(
         TRAIN_SIZES = c(125), 
-        R_EFFECTS = c("none", "units", "spatial"), 
+        R_EFFECTS = c("none", "carres", "spatial"), 
         STRATEGIES = c("none"),
         NEW_SAMPLE_SIZES = c(0),
         HMSC_XFORMULAS = c(
@@ -103,18 +103,7 @@ COMBINATIONS <- list(
         R_EFFECTS = c("none"), 
         NEW_SAMPLE_SIZES = c(50),
         STRATEGIES = c("none", "business-as-usual", "gap-filling", 
-            "simplified-uncertainty"),
-        HMSC_XFORMULAS = c(
-            ~ (NDVI + light_pollution + p_milieu + altitude + precip_spring + 
-                tmp_spring)
-        )
-    ),
-    # Add new samples through different strategies
-    list(
-        TRAIN_SIZES = c(125), 
-        R_EFFECTS = c("none"), 
-        NEW_SAMPLE_SIZES = c(50),
-        STRATEGIES = c("none", "simplified-uncertainty", 
+            "simplified-uncertainty", 
             "2-part-simplified-uncertainty", "3-part-simplified-uncertainty"),
         HMSC_XFORMULAS = c(
             ~ (NDVI + light_pollution + p_milieu + altitude + precip_spring + 
@@ -127,6 +116,26 @@ COMBINATIONS <- list(
         R_EFFECTS = c("none"), 
         NEW_SAMPLE_SIZES = c(0, 10, 25, 50, 100, 150),
         STRATEGIES =  c("simplified-uncertainty"),
+        HMSC_XFORMULAS = c(
+            ~ (NDVI + light_pollution + p_milieu + altitude + precip_spring + 
+                tmp_spring)
+        )
+    ),
+    list(
+        TRAIN_SIZES = c(125), 
+        R_EFFECTS = c("none"), 
+        NEW_SAMPLE_SIZES = c(0, 10, 25, 50, 100, 150),
+        STRATEGIES =  c("gap-filling"),
+        HMSC_XFORMULAS = c(
+            ~ (NDVI + light_pollution + p_milieu + altitude + precip_spring + 
+                tmp_spring)
+        )
+    ),
+    list(
+        TRAIN_SIZES = c(125), 
+        R_EFFECTS = c("none"), 
+        NEW_SAMPLE_SIZES = c(0, 10, 25, 50, 100, 150),
+        STRATEGIES =  c("3-part-simplified-uncertainty"),
         HMSC_XFORMULAS = c(
             ~ (NDVI + light_pollution + p_milieu + altitude + precip_spring + 
                 tmp_spring)
@@ -342,7 +351,7 @@ for (k in seq(K_FOLDS)) {
                 STRATEGIES = strategy,
                 NEW_SAMPLE_SIZES = n_new_samples,
                 TRAIN_SIZES = train_size,
-                HMSC_XFORMULAS = x_variables
+                HMSC_XFORMULAS = formula
             ),
             k_fold = k
         )            
@@ -382,7 +391,7 @@ for (k in seq(K_FOLDS)) {
                             STRATEGIES = "none",
                             NEW_SAMPLE_SIZES = c(0),
                             TRAIN_SIZES = train_size,
-                            HMSC_XFORMULAS = x_variables
+                            HMSC_XFORMULAS = formula
                         ),
                         k_fold = k),  
                     "chains.rds"))
@@ -407,7 +416,7 @@ for (k in seq(K_FOLDS)) {
             cat("\n")
             cli_alert_info("1. Fitting model...")
             base_model <- prepare_hmsc_training(
-                subset = training_set,
+                subdataset = training_set,
                 x_cols = x_variables, 
                 y_cols = if (is.null(Y_SPECIES)) NAMES_SPECIES else Y_SPECIES,
                 formula = formula,
