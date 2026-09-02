@@ -73,6 +73,17 @@ COMBINATIONS <- list(
                 tmp_spring)
         )
     ),
+    # Add random effects
+    list(
+        TRAIN_SIZES = c(125), 
+        R_EFFECTS = c("none", "carres", "spatial"), 
+        STRATEGIES = c("none"),
+        NEW_SAMPLE_SIZES = c(0),
+        HMSC_XFORMULAS = c(
+            ~ (NDVI + light_pollution + p_milieu + altitude + precip_spring + 
+                tmp_spring)
+        )
+    ),
     # Change the number of explicative variables
     list(
         TRAIN_SIZES = c(125), 
@@ -85,17 +96,6 @@ COMBINATIONS <- list(
             ~ (p_milieu + light_pollution + altitude + NDVI),
             ~ (p_milieu + light_pollution + altitude),
             ~ (p_milieu + light_pollution))
-    ),
-    # Add random effects
-    list(
-        TRAIN_SIZES = c(125), 
-        R_EFFECTS = c("none", "carres", "spatial"), 
-        STRATEGIES = c("none"),
-        NEW_SAMPLE_SIZES = c(0),
-        HMSC_XFORMULAS = c(
-            ~ (NDVI + light_pollution + p_milieu + altitude + precip_spring + 
-                tmp_spring)
-        )
     ),
     # Add new samples through different strategies
     list(
@@ -136,17 +136,6 @@ COMBINATIONS <- list(
         R_EFFECTS = c("none"), 
         NEW_SAMPLE_SIZES = c(0, 10, 25, 50, 100, 150),
         STRATEGIES =  c("3-part-simplified-uncertainty"),
-        HMSC_XFORMULAS = c(
-            ~ (NDVI + light_pollution + p_milieu + altitude + precip_spring + 
-                tmp_spring)
-        )
-    ),
-    # Add a different number of new samples
-    list(
-        TRAIN_SIZES = c(125), 
-        R_EFFECTS = c("none"), 
-        NEW_SAMPLE_SIZES = c(0, 10, 25, 50, 100, 150),
-        STRATEGIES =  c("gap-filling"),
         HMSC_XFORMULAS = c(
             ~ (NDVI + light_pollution + p_milieu + altitude + precip_spring + 
                 tmp_spring)
@@ -351,7 +340,7 @@ for (k in seq(K_FOLDS)) {
                 STRATEGIES = strategy,
                 NEW_SAMPLE_SIZES = n_new_samples,
                 TRAIN_SIZES = train_size,
-                HMSC_XFORMULAS = formula
+                HMSC_XFORMULAS = list(formula)
             ),
             k_fold = k
         )            
@@ -391,7 +380,7 @@ for (k in seq(K_FOLDS)) {
                             STRATEGIES = "none",
                             NEW_SAMPLE_SIZES = c(0),
                             TRAIN_SIZES = train_size,
-                            HMSC_XFORMULAS = formula
+                            HMSC_XFORMULAS = list(formula)
                         ),
                         k_fold = k),  
                     "chains.rds"))
