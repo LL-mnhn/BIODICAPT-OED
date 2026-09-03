@@ -25,6 +25,7 @@ COMBINATIONS <- parameters$COMBINATIONS
 
 ##### Main ##### --------------------------------------------------------------
 cli_alert_info("------------ Score comparison ------------\n\n")
+loop_on_list = c()
 for (combination in COMBINATIONS) {
     if (sum(lapply(combination, length) > 1) > 1) {
         stop(paste(
@@ -55,8 +56,10 @@ for (combination in COMBINATIONS) {
         loop_model <- combination
     }
 
-    cli_alert_info(paste0("Plotting ", loop_on, "..."))
-
+    loop_index <- sum(loop_on_list == loop_on)
+    idx <- paste0("-", loop_index)
+    loop_on_list <- c(loop_on_list, loop_on)
+    cli_alert_info(paste0("Plotting ", loop_on, idx, "..."))
 
     for (bool in c(FALSE, TRUE)) {
         if (bool == FALSE) {
@@ -80,7 +83,7 @@ for (combination in COMBINATIONS) {
             species_names = parameters$Y_SPECIES,
             save_to = file.path(
                 FIGURES_PATH, SUBFOLDER,
-                paste0("boxplot_", tolower(loop_on), sp, "_comparison.pdf"))
+                paste0("boxplot_", tolower(loop_on), idx, sp, "_comparison.pdf"))
         ))
 
         if (is.numeric(combination[[loop_on]]) | (loop_on == "HMSC_XFORMULAS")) {
@@ -96,7 +99,7 @@ for (combination in COMBINATIONS) {
                 species_names = parameters$Y_SPECIES,
                 save_to = file.path(
                     FIGURES_PATH, SUBFOLDER,
-                    paste0("lineplot_", tolower(loop_on), sp, "_scores.pdf"))
+                    paste0("lineplot_", tolower(loop_on), idx, sp, "_scores.pdf"))
                 ))
         } else {
             . <- suppressMessages(dotwhisker_model_scores(
@@ -112,7 +115,7 @@ for (combination in COMBINATIONS) {
                 species_names = parameters$Y_SPECIES,
                 save_to = file.path(
                     FIGURES_PATH, SUBFOLDER,
-                    paste0("dotwhisker_", tolower(loop_on), sp, "_scores.pdf")),
+                    paste0("dotwhisker_", tolower(loop_on), idx, sp, "_scores.pdf")),
             ))
         }
 
@@ -132,6 +135,6 @@ for (combination in COMBINATIONS) {
         proportion = 1/100,
         save_to = file.path(
             FIGURES_PATH, SUBFOLDER,
-            paste0("improvement_", tolower(loop_on), sp, "_scores.pdf"))
+            paste0("improvement_", tolower(loop_on), idx, sp, "_scores.pdf"))
     ))
 }

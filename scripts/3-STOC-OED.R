@@ -62,49 +62,47 @@ NCHAINS <- 3
 ##### Parameters: loops ##### -------------------------------------------------
 # Each list is a combination of parameters to use to train the model
 COMBINATIONS <- list(
-    # Change the number of training samples
-    list(
-        TRAIN_SIZES = c(15, 25, 50, 75, 100, 125), # values <= MAX_TRAIN_SIZE
-        R_EFFECTS = c("none"), # c("none", "units", "spatial")
-        STRATEGIES = c("none"), # c("none", "business-as-usual", "gap-filling", "simplified-uncertainty")
-        NEW_SAMPLE_SIZES = c(0),
-        HMSC_XFORMULAS = c(
-            ~ (NDVI + light_pollution + p_milieu + altitude + precip_spring + 
-                tmp_spring)
-        )
-    ),
-    # Add random effects
+    # # Change the number of training samples
+    # list(
+    #     TRAIN_SIZES = c(15, 25, 50, 75, 100, 125), # values <= MAX_TRAIN_SIZE
+    #     R_EFFECTS = c("none"), # c("none", "units", "spatial")
+    #     STRATEGIES = c("none"), # c("none", "business-as-usual", "gap-filling", "simplified-uncertainty")
+    #     NEW_SAMPLE_SIZES = c(0),
+    #     HMSC_XFORMULAS = c(
+    #         ~ (NDVI + light_pollution + p_milieu + altitude + precip_spring + 
+    #             tmp_spring)
+    #     )
+    # ),
+    # # Add random effects
+    # list(
+    #     TRAIN_SIZES = c(125), 
+    #     R_EFFECTS = c("none", "carres", "spatial"), 
+    #     STRATEGIES = c("none"),
+    #     NEW_SAMPLE_SIZES = c(0),
+    #     HMSC_XFORMULAS = c(
+    #         ~ (NDVI + light_pollution + p_milieu + altitude + precip_spring + 
+    #             tmp_spring)
+    #     )
+    # ),
+    # # Change the number of explicative variables
+    # list(
+    #     TRAIN_SIZES = c(125), 
+    #     R_EFFECTS = c("none"), 
+    #     STRATEGIES = c("none"), 
+    #     NEW_SAMPLE_SIZES = c(0),
+    #     HMSC_XFORMULAS = c(
+    #         ~ (NDVI + light_pollution + p_milieu + altitude + precip_spring + 
+    #             tmp_spring),
+    #         ~ (p_milieu + light_pollution + altitude + NDVI),
+    #         ~ (p_milieu + light_pollution + altitude),
+    #         ~ (p_milieu + light_pollution))
+    # ),
+    # # Add new samples through different strategies
     list(
         TRAIN_SIZES = c(125), 
-        R_EFFECTS = c("none", "carres", "spatial"), 
+        R_EFFECTS = c("none"), 
+        NEW_SAMPLE_SIZES = c(0),
         STRATEGIES = c("none"),
-        NEW_SAMPLE_SIZES = c(0),
-        HMSC_XFORMULAS = c(
-            ~ (NDVI + light_pollution + p_milieu + altitude + precip_spring + 
-                tmp_spring)
-        )
-    ),
-    # Change the number of explicative variables
-    list(
-        TRAIN_SIZES = c(125), 
-        R_EFFECTS = c("none"), 
-        STRATEGIES = c("none"), 
-        NEW_SAMPLE_SIZES = c(0),
-        HMSC_XFORMULAS = c(
-            ~ (NDVI + light_pollution + p_milieu + altitude + precip_spring + 
-                tmp_spring),
-            ~ (p_milieu + light_pollution + altitude + NDVI),
-            ~ (p_milieu + light_pollution + altitude),
-            ~ (p_milieu + light_pollution))
-    ),
-    # Add new samples through different strategies
-    list(
-        TRAIN_SIZES = c(125), 
-        R_EFFECTS = c("none"), 
-        NEW_SAMPLE_SIZES = c(50),
-        STRATEGIES = c("none", "business-as-usual", "gap-filling", 
-            "simplified-uncertainty", 
-            "2-part-simplified-uncertainty", "3-part-simplified-uncertainty"),
         HMSC_XFORMULAS = c(
             ~ (NDVI + light_pollution + p_milieu + altitude + precip_spring + 
                 tmp_spring)
@@ -390,20 +388,30 @@ for (k in seq(K_FOLDS)) {
 
         # If loop runs n times (n>1), the model used to compute the second part
         # of the dataset becomes the model computed on part n-1.
-        # This *could* be a problem since `training_set` is updated but not
-        # `subsets$new_pool`. (samples in new_pool could be sampled n times).
+        # By default:
+        #   - training_set is overwritten each loop (we append new points)
+        #   - subsets$new_pool is renamed as remaining_pool and overwritten 
+        #     each loop (we remove points added to training_set)
+        # This *could* be a problem if we want to sample the same points on
+        # repeated experiments. But since we use "id_point_annee" we are s
+        # points that are different in space and time. That it *should* not 
+        # be a problem with our current datasets.
+        remaining_pool <- subsets$new_pool
         for (part in 1:n_parts) {
+            # 0. Setting up dataset
             training_set <- extended_training_design(
                 strat = strategy_alone,
                 base_subset = training_set, 
-                extension_subset = subsets$new_pool,
+                extension_subset = remaining_pool,
                 new_sample_size = n_new_samples_per_part[part],
                 variables = x_variables,
                 hM = previous_model)
-
+            remaining_pool <- anti_join(
+                remaining_pool, training_set, by = "id_point_annee")
+            
             # 1. Fit model
             cat("\n")
-            cli_alert_info("1. Fitting model...")
+            cli_alert_info(paste0("1.", part, ". Fitting model..."))
             base_model <- prepare_hmsc_training(
                 subdataset = training_set,
                 x_cols = x_variables, 
@@ -427,7 +435,7 @@ for (k in seq(K_FOLDS)) {
 
 
         # 2. Analysis of convergence
-        cli_alert_info("2. Convergence diagnostics...")
+        cli_alert_info(paste0("2.", part, ". Convergence diagnostics..."))
         . <- convergence_hmsc(
             hM = fitted_model, 
             nchains = NCHAINS, 
@@ -435,7 +443,7 @@ for (k in seq(K_FOLDS)) {
             save_folder = path_local_results)
         
         # 3. Analysis of performance
-        cli_alert_info("3. Performance evaluation...")
+        cli_alert_info(paste0("3.", part, ". Performance evaluation..."))
         # Explanatory power
         cli_alert_info("Computing training scores...")
         train_scores <- evaluate_hmsc_performances(
@@ -472,7 +480,7 @@ for (k in seq(K_FOLDS)) {
         cli_alert_success("Scores saved!\n\n")
 
         # 4. Result analysis
-        cli_alert_info("4. Associations...")
+        cli_alert_info(paste0("4.", part, ". Associations..."))
         . <- analyses_hmsc(
             hM = fitted_model, 
             save_folder = path_local_results, 

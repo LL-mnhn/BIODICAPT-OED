@@ -771,7 +771,7 @@ predict_hmsc <- function(hM, df, x_variables) {
         lapply(x_variables, function(col) df[[col]]),
         x_variables))
 
-    if ("spatial" %in% names(fitted_model$ranLevels)) {
+    if ("spatial" %in% names(hM$ranLevels)) {
         # Format coordinates associated to each point
         coords_sf <- sf::st_as_sf(df, coords = c("LON", "LAT"), crs = 4326)
         coords_proj <- sf::st_transform(coords_sf, crs = 2154)
