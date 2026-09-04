@@ -4,7 +4,7 @@
 This repository serves as preparation for works on **Optimal Experimental Designs (OEDs)** for the BIODICAPT project. It focuses on the use of **STOC**: a large dataset of bird sightings, to setup the algorithms and workflow.
 
 > [!TIP]
-> A quick analysis of our results is available [**here**](https://ll-mnhn.github.io/BIODICAPT-OED/reports/report.html).
+> A quick analysis of our results is available [**here**](https://ll-mnhn.github.io/BIODICAPT-OED/report/report.html).
 
 ## Context
 ### BIODICAPT
@@ -28,7 +28,7 @@ BIODICAPT started in early-2026, the first results (data extraction of species d
 │   └── preprocessed_data   # Preprocessed datasets
 ├── outputs/
 │   ├── figures             # Visualizations and plots
-│   └── results             # Statistical outputs and reports
+│   └── results             # Data outputs
 ├── renv/                   # Information about R environment (packages)
 ├── DESCRIPTION             # Standard DESCRIPTION file for R packages
 └── README.md               # This file
@@ -49,7 +49,7 @@ BIODICAPT started in early-2026, the first results (data extraction of species d
 
 ## Getting Started
 ### Reading results
-Open the report in your browser (available [here](https://ll-mnhn.github.io/BIODICAPT-OED/reports/report.html)). Or, alternatively, read the PDF equivalent (available [here](https://github.com/LL-mnhn/BIODICAPT-OED/blob/main/reports/report.pdf)).
+Open the report in your browser (available [here](https://ll-mnhn.github.io/BIODICAPT-OED/report/report.html)). Or, alternatively, read the PDF equivalent (available [here](https://github.com/LL-mnhn/BIODICAPT-OED/blob/main/report/report.pdf)).
 
 ### How to use scripts
 1\. Clone this repository on your machine
