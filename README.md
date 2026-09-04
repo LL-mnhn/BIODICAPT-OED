@@ -83,4 +83,6 @@ When running on an external machine:
 - Other files in `scripts` can be run without restrictions.
 
 ## Contact
-For inquiries, please contact: <loic.lehnhoff@mnhn.fr>
+For inquiries, please contact Loïc Lehnhoff (UMR CESCO - MNHN) at <loic.lehnhoff@mnhn.fr> 
+
+*This work is supervised by Nicolas Parisey (UMR IGEPP - INRAE) and Karine Princé (UMR CESCO - MNHN)*

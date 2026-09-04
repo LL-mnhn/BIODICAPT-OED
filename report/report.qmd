@@ -6,6 +6,22 @@ author:
     orcid: 0000-0002-2100-6626
     email: loic.lehnhoff@mnhn.fr
     affiliation: UMR CESCO
+    role: 
+        - writing
+        - visualization
+        - analysis
+        - data curation
+        - methodology
+  - name: Karine Princé
+    affiliation: UMR CESCO
+    role:
+        - supervision
+        - methodology
+  - name: Nicolas Parisey
+    affiliation: UMR IGEPP
+    role:
+        - supervision
+        - methodology
 
 date: last-modified
 date-format: iso
