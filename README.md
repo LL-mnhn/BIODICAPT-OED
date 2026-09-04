@@ -1,22 +1,22 @@
 # BIODICAPT-OED
 
 ## Overview
-This repository focuses on **Optimal Experimental Designs (OEDs)** for the BIODICAPT project. 
+This repository serves as preparation for works on **Optimal Experimental Designs (OEDs)** for the BIODICAPT project. It focuses on the use of **STOC**: a large dataset of bird sightings, to setup the algorithms and workflow.
 
-> [!IMPORTANT]
-> Pending the publication of our methodology and results, you can find a quick analysis of our results in the `reports` folder, or directly through [**this link**](https://ll-mnhn.github.io/BIODICAPT-OED/reports/report.html).
+> [!TIP]
+> A quick analysis of our results is available [**here**](https://ll-mnhn.github.io/BIODICAPT-OED/reports/report.html).
 
 ## Context
 ### BIODICAPT
 BIODICAPT is a French initiative that aims at monitoring biodiversity of agricultural lands on a large (national) scale through the use of various recording devices.
 
-The project consists of two phases:
-1. Data collection in a "research" network of agricultural plots 
-2. Data collection in the 500 ENI network (voluntary participation of farmers)
+BIODICAPT started in early-2026, the first results (data extraction of species distributions) will not be available until late-2026 or early-2027. In the meantime, we use **STOC** to prepare our workflow.
 
-The transition from the first phase to the second involves a significant shift in scale for data collection, which is where OED will be needed. 
+### STOC
 
-## Description
+
+
+## Project description
 ### Structure
 ```
 ├── report/*                # A report summarising results
@@ -41,15 +41,17 @@ The transition from the first phase to the second involves a significant shift i
 - [X] Training of HMSC models
 - [X] Implementation of custom cost function
 - [X] OED using HMSC on STOC
-- [ ] Add an automatic report
-- [ ] Does adding samples has an effect ?
+- [X] Add an automatic report
+- [X] Does adding samples has an effect ?
 - [ ] Explain results using simulated data ?
 - [ ] Add other models (GJAM, RF, DNN,...)
-- [ ] Results and comparison
 
 
 ## Getting Started
-### How to use
+### Reading results
+Open the report in your browser (available [here](https://ll-mnhn.github.io/BIODICAPT-OED/reports/report.html)). Or, alternatively, read the PDF equivalent (available [here](https://github.com/LL-mnhn/BIODICAPT-OED/blob/main/reports/report.pdf)).
+
+### How to use scripts
 1\. Clone this repository on your machine
 ```bash
 cd /your/local/folder
@@ -66,7 +68,11 @@ install.packages("renv")
 renv::restore()
 ```
 
-3\. Once your environment is ready, local scripts can be run.
+3\. Once your environment is ready, local scripts can be run. E.g.
+
+```R
+source("scripts/4-summary.R")
+```
 
 ### Usage Notes
 Important results and figures are already saved in the `outputs` folder.

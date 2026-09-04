@@ -62,47 +62,49 @@ NCHAINS <- 3
 ##### Parameters: loops ##### -------------------------------------------------
 # Each list is a combination of parameters to use to train the model
 COMBINATIONS <- list(
-    # # Change the number of training samples
-    # list(
-    #     TRAIN_SIZES = c(15, 25, 50, 75, 100, 125), # values <= MAX_TRAIN_SIZE
-    #     R_EFFECTS = c("none"), # c("none", "units", "spatial")
-    #     STRATEGIES = c("none"), # c("none", "business-as-usual", "gap-filling", "simplified-uncertainty")
-    #     NEW_SAMPLE_SIZES = c(0),
-    #     HMSC_XFORMULAS = c(
-    #         ~ (NDVI + light_pollution + p_milieu + altitude + precip_spring + 
-    #             tmp_spring)
-    #     )
-    # ),
-    # # Add random effects
-    # list(
-    #     TRAIN_SIZES = c(125), 
-    #     R_EFFECTS = c("none", "carres", "spatial"), 
-    #     STRATEGIES = c("none"),
-    #     NEW_SAMPLE_SIZES = c(0),
-    #     HMSC_XFORMULAS = c(
-    #         ~ (NDVI + light_pollution + p_milieu + altitude + precip_spring + 
-    #             tmp_spring)
-    #     )
-    # ),
-    # # Change the number of explicative variables
-    # list(
-    #     TRAIN_SIZES = c(125), 
-    #     R_EFFECTS = c("none"), 
-    #     STRATEGIES = c("none"), 
-    #     NEW_SAMPLE_SIZES = c(0),
-    #     HMSC_XFORMULAS = c(
-    #         ~ (NDVI + light_pollution + p_milieu + altitude + precip_spring + 
-    #             tmp_spring),
-    #         ~ (p_milieu + light_pollution + altitude + NDVI),
-    #         ~ (p_milieu + light_pollution + altitude),
-    #         ~ (p_milieu + light_pollution))
-    # ),
-    # # Add new samples through different strategies
+    # Change the number of training samples
+    list(
+        TRAIN_SIZES = c(15, 25, 50, 75, 100, 125), # values <= MAX_TRAIN_SIZE
+        R_EFFECTS = c("none"), # c("none", "units", "spatial")
+        STRATEGIES = c("none"), # c("none", "business-as-usual", "gap-filling", "simplified-uncertainty")
+        NEW_SAMPLE_SIZES = c(0),
+        HMSC_XFORMULAS = c(
+            ~ (NDVI + light_pollution + p_milieu + altitude + precip_spring + 
+                tmp_spring)
+        )
+    ),
+    # Add random effects
+    list(
+        TRAIN_SIZES = c(125), 
+        R_EFFECTS = c("none", "carres", "spatial"), 
+        STRATEGIES = c("none"),
+        NEW_SAMPLE_SIZES = c(0),
+        HMSC_XFORMULAS = c(
+            ~ (NDVI + light_pollution + p_milieu + altitude + precip_spring + 
+                tmp_spring)
+        )
+    ),
+    # Change the number of explicative variables
     list(
         TRAIN_SIZES = c(125), 
         R_EFFECTS = c("none"), 
+        STRATEGIES = c("none"), 
         NEW_SAMPLE_SIZES = c(0),
-        STRATEGIES = c("none"),
+        HMSC_XFORMULAS = c(
+            ~ (NDVI + light_pollution + p_milieu + altitude + precip_spring + 
+                tmp_spring),
+            ~ (p_milieu + light_pollution + altitude + NDVI),
+            ~ (p_milieu + light_pollution + altitude),
+            ~ (p_milieu + light_pollution))
+    ),
+    # Add new samples through different strategies
+    list(
+        TRAIN_SIZES = c(125), 
+        R_EFFECTS = c("none"), 
+        NEW_SAMPLE_SIZES = c(50),
+        STRATEGIES = c("none", "business-as-usual", "gap-filling", 
+            "simplified-uncertainty", 
+            "2-part-simplified-uncertainty", "3-part-simplified-uncertainty"),
         HMSC_XFORMULAS = c(
             ~ (NDVI + light_pollution + p_milieu + altitude + precip_spring + 
                 tmp_spring)

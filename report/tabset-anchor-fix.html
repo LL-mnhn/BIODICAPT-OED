@@ -1,0 +1,46 @@
+<script>
+function activateTabForHash(hash) {
+  if (!hash) return;
+  const target = document.querySelector(hash);
+  if (!target) return;
+
+  // Find the enclosing tab pane (Quarto wraps tabset content in .tab-pane)
+  const pane = target.closest('.tab-pane');
+  if (pane && pane.id) {
+    // Find the nav-link that controls this pane
+    const tabsetRoot = pane.closest('.panel-tabset, .tabset');
+    if (tabsetRoot) {
+      const trigger = tabsetRoot.querySelector(
+        `[data-bs-target="#${pane.id}"], [href="#${pane.id}"]`
+      );
+      if (trigger) {
+        // Use Bootstrap's Tab API if available, else simulate a click
+        if (window.bootstrap && bootstrap.Tab) {
+          bootstrap.Tab.getOrCreateInstance(trigger).show();
+        } else {
+          trigger.click();
+        }
+      }
+    }
+  }
+
+  // Scroll after the tab has switched (give the DOM a tick to update)
+  setTimeout(() => {
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 50);
+}
+
+// Handle initial page load with a hash
+document.addEventListener('DOMContentLoaded', () => {
+  if (location.hash) activateTabForHash(location.hash);
+});
+
+// Handle clicks on in-page anchor links (hash may not change if already set)
+document.addEventListener('click', (e) => {
+  const link = e.target.closest('a[href^="#"]');
+  if (!link) return;
+  const hash = link.getAttribute('href');
+  // let default anchor behavior happen too, but also force tab switch
+  requestAnimationFrame(() => activateTabForHash(hash));
+});
+</script>

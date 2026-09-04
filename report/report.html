@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.37">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Loïc Lehnhoff">
+<meta name="dcterms.date" content="2026-09-04">
+
+<title>STOC: Optimal Experimental Design</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for citations */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+}
+.hanging-indent div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}</style>
+
+
+<script src="report_files/libs/clipboard/clipboard.min.js"></script>
+<script src="report_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="report_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="report_files/libs/quarto-html/popper.min.js"></script>
+<script src="report_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="report_files/libs/quarto-html/anchor.min.js"></script>
+<link href="report_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="report_files/libs/quarto-html/quarto-syntax-highlighting-7f8f88aac4f3542376d5c11b86a4c14d.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="report_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="report_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="report_files/libs/bootstrap/bootstrap-7ada25dfc3df03520cd37b311af16811.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body class="quarto-light">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+  <nav id="TOC" role="doc-toc" class="toc-active" data-toc-expanded="2">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#introduction" id="toc-introduction" class="nav-link active" data-scroll-target="#introduction">Introduction</a>
+  <ul>
+  <li><a href="#oed" id="toc-oed" class="nav-link" data-scroll-target="#oed">OED</a></li>
+  <li><a href="#biodicapt" id="toc-biodicapt" class="nav-link" data-scroll-target="#biodicapt">BIODICAPT</a></li>
+  <li><a href="#strategy" id="toc-strategy" class="nav-link" data-scroll-target="#strategy">Strategy</a>
+  <ul class="collapse">
+  <li><a href="#hmsc" id="toc-hmsc" class="nav-link" data-scroll-target="#hmsc">HMSC</a></li>
+  <li><a href="#gjam" id="toc-gjam" class="nav-link" data-scroll-target="#gjam">GJAM</a></li>
+  </ul></li>
+  </ul></li>
+  <li><a href="#mat-met-stoc-oed" id="toc-mat-met-stoc-oed" class="nav-link" data-scroll-target="#mat-met-stoc-oed">Materials &amp; Methods</a></li>
+  <li><a href="#results" id="toc-results" class="nav-link" data-scroll-target="#results">Results</a>
+  <ul>
+  <li><a href="#adding-new-points" id="toc-adding-new-points" class="nav-link" data-scroll-target="#adding-new-points">Adding new points</a>
+  <ul class="collapse">
+  <li><a href="#reference-results" id="toc-reference-results" class="nav-link" data-scroll-target="#reference-results">Reference results</a></li>
+  <li><a href="#our-results" id="toc-our-results" class="nav-link" data-scroll-target="#our-results">Our results</a></li>
+  <li><a href="#conclusions" id="toc-conclusions" class="nav-link" data-scroll-target="#conclusions">Conclusions</a></li>
+  <li><a href="#comparison-with-mondain-monval-et-al." id="toc-comparison-with-mondain-monval-et-al." class="nav-link" data-scroll-target="#comparison-with-mondain-monval-et-al.">Comparison with Mondain-Monval et al.</a></li>
+  </ul></li>
+  <li><a href="#how-many-points-to-add" id="toc-how-many-points-to-add" class="nav-link" data-scroll-target="#how-many-points-to-add">How many points to add?</a>
+  <ul class="collapse">
+  <li><a href="#effect-using-gf" id="toc-effect-using-gf" class="nav-link" data-scroll-target="#effect-using-gf">Effect using “GF”</a></li>
+  <li><a href="#effect-using-su" id="toc-effect-using-su" class="nav-link" data-scroll-target="#effect-using-su">Effect using “SU”</a></li>
+  <li><a href="#effect-using-3psu" id="toc-effect-using-3psu" class="nav-link" data-scroll-target="#effect-using-3psu">Effect using “3PSU”</a></li>
+  </ul></li>
+  <li><a href="#conclusions-1" id="toc-conclusions-1" class="nav-link" data-scroll-target="#conclusions-1">Conclusions</a></li>
+  <li><a href="#overall-discussion" id="toc-overall-discussion" class="nav-link" data-scroll-target="#overall-discussion">Overall discussion</a></li>
+  </ul></li>
+  </ul>
+<div class="quarto-alternate-formats"><h2>Other Formats</h2><ul><li><a href="../report.pdf"><i class="bi bi-file-pdf"></i>PDF</a></li></ul></div></nav>
+</div>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">STOC: Optimal Experimental Design</h1>
+</div>
+
+
+<div class="quarto-title-meta-author">
+  <div class="quarto-title-meta-heading">Author</div>
+  <div class="quarto-title-meta-heading">Affiliation</div>
+  
+    <div class="quarto-title-meta-contents">
+    <p class="author">Loïc Lehnhoff <a href="mailto:loic.lehnhoff@mnhn.fr" class="quarto-title-author-email"><i class="bi bi-envelope"></i></a> <a href="https://orcid.org/0000-0002-2100-6626" class="quarto-title-author-orcid"> <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAA2ZpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMC1jMDYwIDYxLjEzNDc3NywgMjAxMC8wMi8xMi0xNzozMjowMCAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wTU09Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9tbS8iIHhtbG5zOnN0UmVmPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvc1R5cGUvUmVzb3VyY2VSZWYjIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtcE1NOk9yaWdpbmFsRG9jdW1lbnRJRD0ieG1wLmRpZDo1N0NEMjA4MDI1MjA2ODExOTk0QzkzNTEzRjZEQTg1NyIgeG1wTU06RG9jdW1lbnRJRD0ieG1wLmRpZDozM0NDOEJGNEZGNTcxMUUxODdBOEVCODg2RjdCQ0QwOSIgeG1wTU06SW5zdGFuY2VJRD0ieG1wLmlpZDozM0NDOEJGM0ZGNTcxMUUxODdBOEVCODg2RjdCQ0QwOSIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgQ1M1IE1hY2ludG9zaCI+IDx4bXBNTTpEZXJpdmVkRnJvbSBzdFJlZjppbnN0YW5jZUlEPSJ4bXAuaWlkOkZDN0YxMTc0MDcyMDY4MTE5NUZFRDc5MUM2MUUwNEREIiBzdFJlZjpkb2N1bWVudElEPSJ4bXAuZGlkOjU3Q0QyMDgwMjUyMDY4MTE5OTRDOTM1MTNGNkRBODU3Ii8+IDwvcmRmOkRlc2NyaXB0aW9uPiA8L3JkZjpSREY+IDwveDp4bXBtZXRhPiA8P3hwYWNrZXQgZW5kPSJyIj8+84NovQAAAR1JREFUeNpiZEADy85ZJgCpeCB2QJM6AMQLo4yOL0AWZETSqACk1gOxAQN+cAGIA4EGPQBxmJA0nwdpjjQ8xqArmczw5tMHXAaALDgP1QMxAGqzAAPxQACqh4ER6uf5MBlkm0X4EGayMfMw/Pr7Bd2gRBZogMFBrv01hisv5jLsv9nLAPIOMnjy8RDDyYctyAbFM2EJbRQw+aAWw/LzVgx7b+cwCHKqMhjJFCBLOzAR6+lXX84xnHjYyqAo5IUizkRCwIENQQckGSDGY4TVgAPEaraQr2a4/24bSuoExcJCfAEJihXkWDj3ZAKy9EJGaEo8T0QSxkjSwORsCAuDQCD+QILmD1A9kECEZgxDaEZhICIzGcIyEyOl2RkgwAAhkmC+eAm0TAAAAABJRU5ErkJggg=="></a></p>
+  </div>
+  <div class="quarto-title-meta-contents">
+        <p class="affiliation">
+            UMR CESCO
+          </p>
+      </div>
+  </div>
+
+<div class="quarto-title-meta">
+
+      
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">2026-09-04</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="introduction" class="level1">
+<h1>Introduction</h1>
+<section id="oed" class="level2">
+<h2 class="anchored" data-anchor-id="oed">OED</h2>
+<p><strong>Optimal Experimental Design</strong> (or OED for short) is a method for designing experiments that aims at maximising information gain while minimising a cost function. This cost function can encompass uncertainty, cost, time… it is up to the user to select the parameters to optimise.</p>
+<p><mark>The key concept is that <strong>not all observations are equally informative</strong>.</mark></p>
+<p>This concept<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a> can be particularly interesting when working with participatory science datasets, which is the case of the <strong>STOC</strong> dataset, which we are using here.</p>
+</section>
+<section id="biodicapt" class="level2">
+<h2 class="anchored" data-anchor-id="biodicapt">BIODICAPT</h2>
+<p>BIODICAPT is a French initiative that aims at monitoring biodiversity of agricultural lands on a large (<em>aka national</em>) scale through the use of various recording devices.</p>
+<p>BIODICAPT started in early-2026, the first results (data extraction of species distributions) will not be available until late-2026 or early-2027. That is why, in the meantime, we are going to use <strong>STOC</strong> to prepare our workflow.</p>
+</section>
+<section id="strategy" class="level2">
+<h2 class="anchored" data-anchor-id="strategy">Strategy</h2>
+<p>With OED, the question we want to answer is simple: <strong>which points are most informative in the 500ENI network, given our previous data collection and our constraints?</strong></p>
+<p>For that, we’ll use explicative variables collected on site (temperatures, precipitation, type of land, …), response variables obtained from recorders (presence-absence of birds species mainly), and Species Distribution Models (SDM), in particular HMSC, which is a joint-SDM (JSDM) <span class="citation" data-cites="ovaskainen_how_2017">[<a href="#ref-ovaskainen_how_2017" role="doc-biblioref">1</a>]</span>. These models make use of several species distributions to find <em>latent</em> links between them, which supposedly improves the prediction accuracy.</p>
+<p>They are opposed to single SDMs (Species Distribution Models applied to one species) and SSDMs (Stacked SDMs, are mutliple SMDs glued together, with no link between them).</p>
+<section id="hmsc" class="level3">
+<h3 class="anchored" data-anchor-id="hmsc">HMSC</h3>
+<p>HMSC (Hierarchical Modelling of Species Communities) is a JSDM developped by Ovaskainen et al.&nbsp;(2017) <span class="citation" data-cites="ovaskainen_how_2017">[<a href="#ref-ovaskainen_how_2017" role="doc-biblioref">1</a>]</span>, it is distributed as an open-source R-package on <a href="https://github.com/hmsc-r/HMSC/">GitHub</a> <span class="citation" data-cites="tikhonov_joint_2020">[<a href="#ref-tikhonov_joint_2020" role="doc-biblioref">2</a>]</span>.</p>
+<p>It is undoubtebly the most widely used JSDMin the last years. To summarise its principle, take a quick look at Figure 4, from their original publication <span class="citation" data-cites="ovaskainen_how_2017">[<a href="#ref-ovaskainen_how_2017" role="doc-biblioref">1</a>]</span>:</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="images/figure4_ovaskainen_2017.png" class="img-fluid figure-img"></p>
+<figcaption>Copy of Figure 4 from Ovaskainen et al.&nbsp;(2017) <span class="citation" data-cites="ovaskainen_how_2017">[<a href="#ref-ovaskainen_how_2017" role="doc-biblioref">1</a>]</span></figcaption>
+</figure>
+</div>
+</section>
+<section id="gjam" class="level3">
+<h3 class="anchored" data-anchor-id="gjam">GJAM</h3>
+<div class="callout callout-style-default callout-caution callout-titled">
+<div class="callout-header d-flex align-content-center collapsed" data-bs-toggle="collapse" data-bs-target=".callout-1-contents" aria-controls="callout-1" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Caution</span>Work in progress…
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-1" class="callout-1-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p>Only HMSC has been implemented into our code for now. GJAM is under consideration, as well as other SDMs: RF, SSDM, deep-SDMs, …</p>
+<p>↳ This section will be updated when new results are available.</p>
+</div>
+</div>
+</div>
+</section>
+</section>
+</section>
+<section id="mat-met-stoc-oed" class="level1">
+<h1>Materials &amp; Methods</h1>
+<p>We use a dataset that is already curated and known to work with HMSC: <strong>STOC</strong> <span class="citation" data-cites="valle_species_2024">[<a href="#ref-valle_species_2024" role="doc-biblioref">3</a>]</span>.</p>
+<p>The French Breeding Bird Survey (FBBS, or STOC in french) is a standardised multi-species abundance dataset, based on a citizen science program. It contains bird sightings and explanatory/environmental variables. Since it is already pre-processed, we can work directly with it, out of the box.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="images/Flowchart-STOC-data.png" height="750" class="figure-img"></p>
+<figcaption>Flowchart of the workflow with STOC dataset</figcaption>
+</figure>
+</div>
+</section>
+<section id="results" class="level1">
+<h1>Results</h1>
+<section id="adding-new-points" class="level2">
+<h2 class="anchored" data-anchor-id="adding-new-points">Adding new points</h2>
+<p>First, we want to make sure that, following the <a href="#mat-met-stoc-oed">flowchart</a> above, we can actually make better models by adding (50-150) new points to our dataset.</p>
+<section id="reference-results" class="level3">
+<h3 class="anchored" data-anchor-id="reference-results">Reference results</h3>
+<p>To test this, we draw on <em>Mondain-Monval et al.</em> work <span class="citation" data-cites="mondainmonval_adaptive_2024">[<a href="#ref-mondainmonval_adaptive_2024" role="doc-biblioref">4</a>]</span>. However, it is only a base on which we build, not an exact replica as our method and dataset are quite different from the original <em>Mondain-Monval et al.</em> publication:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 31%">
+<col style="width: 46%">
+<col style="width: 21%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: center;">Parameter</th>
+<th style="text-align: center;">M.M.</th>
+<th style="text-align: center;">Ours</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: center;">Dataset</td>
+<td style="text-align: center;">Simulated with <code>virtualspecies</code> package</td>
+<td style="text-align: center;">STOC annual sampling</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">Number of species</td>
+<td style="text-align: center;">50 species</td>
+<td style="text-align: center;">15 species</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;">Number of variables</td>
+<td style="text-align: center;">10 (randomly selected from 33 available)</td>
+<td style="text-align: center;">6 (direct from STOC)</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">Model type</td>
+<td style="text-align: center;">Ensemble model (GLM + GAM + RF)</td>
+<td style="text-align: center;">HMSC</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;">Re-training strategy</td>
+<td style="text-align: center;">Re-sampling of 1%, 10% or 50% of dataset</td>
+<td style="text-align: center;">Addition of new samples (50)</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">Training size</td>
+<td style="text-align: center;">2000 cells</td>
+<td style="text-align: center;">125 cells + new data</td>
+</tr>
+</tbody>
+</table>
+<p>With this context in mind, here are their results:</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="images/figure3_mondain-monval_2024.png" class="img-fluid figure-img"></p>
+<figcaption>Copy of Figure 3a mondain-monval et al., 2024</figcaption>
+</figure>
+</div>
+</section>
+<section id="our-results" class="level3">
+<h3 class="anchored" data-anchor-id="our-results">Our results</h3>
+<p>How much does the model improve when adding 50 new samples to the <em>base</em> dataset (125 samples)?</p>
+<p>We investigate this depending on different strategies.</p>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-1-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-1" role="tab" aria-controls="tabset-1-1" aria-selected="true" href="">Boxplot differences</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-2" role="tab" aria-controls="tabset-1-2" aria-selected="false" href="">Boxplot improvement</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-3-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-3" role="tab" aria-controls="tabset-1-3" aria-selected="false" href="">Estimated effects</a></li></ul>
+<div class="tab-content">
+<div id="tabset-1-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-1-1-tab">
+<p><span id="tab-boxplot-differences"></span></p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="report_files/figure-html/Strategies%20boxplots-1.png" class="img-fluid figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<div id="tabset-1-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-1-2-tab">
+<p><span id="tab-boxplot-improvement"></span></p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="report_files/figure-html/Strategies%20boxplots%20bis-1.png" class="img-fluid figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<div id="tabset-1-3" class="tab-pane" role="tabpanel" aria-labelledby="tabset-1-3-tab">
+<p><span id="tab-estimated-effects"></span></p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="report_files/figure-html/Strategies%20dotwhisker-1.png" class="img-fluid figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p><em>BAU: Business-as-usual; GF: Gap-filling; SU: Simplified-uncertainty; XPSU: SU divided in X parts</em></p>
+<p><strong>Fitted model:</strong></p>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Linear mixed model fit by REML. t-tests use Satterthwaite's method [
+lmerModLmerTest]
+Formula: score ~ loop_element + (1 | k_fold) + (1 | species)
+   Data: subset(scores_df, dataset == subset)
+
+REML criterion at convergence: -5837.3
+
+Scaled residuals: 
+    Min      1Q  Median      3Q     Max 
+-3.0297 -0.6775 -0.0617  0.6780  3.9248 
+
+Random effects:
+ Groups   Name        Variance  Std.Dev.
+ species  (Intercept) 5.831e-03 0.076364
+ k_fold   (Intercept) 6.421e-06 0.002534
+ Residual             7.074e-05 0.008411
+Number of obs: 900, groups:  species, 15; k_fold, 10
+
+Fixed effects:
+                                            Estimate Std. Error         df
+(Intercept)                                1.331e-01  1.975e-02  1.407e+01
+loop_elementbusiness-as-usual             -2.109e-03  9.712e-04  8.710e+02
+loop_elementgap-filling                   -2.737e-03  9.712e-04  8.710e+02
+loop_elementsimplified-uncertainty        -2.143e-03  9.712e-04  8.710e+02
+loop_element2-part-simplified-uncertainty -9.166e-04  9.712e-04  8.710e+02
+loop_element3-part-simplified-uncertainty -2.280e-03  9.712e-04  8.710e+02
+                                          t value Pr(&gt;|t|)    
+(Intercept)                                 6.742 9.18e-06 ***
+loop_elementbusiness-as-usual              -2.172  0.03013 *  
+loop_elementgap-filling                    -2.818  0.00494 ** 
+loop_elementsimplified-uncertainty         -2.206  0.02763 *  
+loop_element2-part-simplified-uncertainty  -0.944  0.34553    
+loop_element3-part-simplified-uncertainty  -2.348  0.01911 *  
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
+</div>
+</div>
+</section>
+<section id="conclusions" class="level3">
+<h3 class="anchored" data-anchor-id="conclusions">Conclusions</h3>
+<p>These results show that, when adding 50 new points to our training set (125 points), training, test and validation scores vary depending on the strategy chosen to add those points.</p>
+<p>In details “BAU”, “GF” and “SU” improve significantly the results in test (compared to the “base” model which is not adding new points), while worsening results in training (expected since unknown points are added to the training set).</p>
+<p>Interestingly, adding new samples on several iterations (i.e.&nbsp;in 2 times with “2PSU”, or 3 times with “3PSU”) instead of all at once (i.e.&nbsp;“SU”) yields to differences in scores. It seems like “2PSU” scores are closer to the one of the base strategy, while “3PSU” scores show improvement comparable to “SU” and “GF” (clearer on <a href="#tab-boxplot-improvement">this plot</a>).</p>
+<p>Overall however, these effects sizes (~0.0025 in MSE units) are small relative to the residual noise (SD ≈ 0.0086) and an order of magnitude smaller than between-species variability (SD ≈ 0.076).</p>
+</section>
+<section id="comparison-with-mondain-monval-et-al." class="level3">
+<h3 class="anchored" data-anchor-id="comparison-with-mondain-monval-et-al.">Comparison with Mondain-Monval et al.</h3>
+<p>Mondain-Monval et al. <span class="citation" data-cites="mondainmonval_adaptive_2024">[<a href="#ref-mondainmonval_adaptive_2024" role="doc-biblioref">4</a>]</span> and we computed the difference in MSE between a base strategy (business-as-usual) and other strategies. However, our training sets were not built in the same way: - Mondain-Monval et al. <span class="citation" data-cites="mondainmonval_adaptive_2024">[<a href="#ref-mondainmonval_adaptive_2024" role="doc-biblioref">4</a>]</span> <strong>changed a proportion of their training set</strong> (1%, 10%; 50%) according to the chosen strategy. - We <strong>added new samples to our training set</strong> (50, with a base strategy of 125 samples) according to the chosen strategy.</p>
+<p>Our figures also show scores in train/val/test. We assume Mondain-Monval et al. <span class="citation" data-cites="mondainmonval_adaptive_2024">[<a href="#ref-mondainmonval_adaptive_2024" role="doc-biblioref">4</a>]</span> show only scores in test.</p>
+<p>In our results, differences in MSE between resampling strategies are slight, less marked than those of <span class="citation" data-cites="mondainmonval_adaptive_2024">[<a href="#ref-mondainmonval_adaptive_2024" role="doc-biblioref">4</a>]</span>. Statistical tests reveal that there are significant differences in the test scores compared to no resampling. Interestingly, the “SU” strategy does not clearly yields to the best results (which was what we expected from <span class="citation" data-cites="mondainmonval_adaptive_2024">[<a href="#ref-mondainmonval_adaptive_2024" role="doc-biblioref">4</a>]</span>).</p>
+<p>An interesting continuation is to look at the effect of adding more or less points, depending on the strategy. We chose “GF”, “SU” and “3PSU” to investigate this further.</p>
+</section>
+</section>
+<section id="how-many-points-to-add" class="level2">
+<h2 class="anchored" data-anchor-id="how-many-points-to-add">How many points to add?</h2>
+<section id="effect-using-gf" class="level3">
+<h3 class="anchored" data-anchor-id="effect-using-gf">Effect using “GF”</h3>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-2-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-1" role="tab" aria-controls="tabset-2-1" aria-selected="true" href="">Boxplot differences</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-2-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-2" role="tab" aria-controls="tabset-2-2" aria-selected="false" href="">Boxplot improvement</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-2-3-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-3" role="tab" aria-controls="tabset-2-3" aria-selected="false" href="">Estimated effects</a></li></ul>
+<div class="tab-content">
+<div id="tabset-2-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-2-1-tab">
+<p><span id="tab-boxplot-differences-1"></span></p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="report_files/figure-html/GF%20new%20samples%20boxplots-1.png" class="img-fluid figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<div id="tabset-2-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-2-2-tab">
+<p><span id="tab-boxplot-improvement-1"></span></p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="report_files/figure-html/GF%20new%20samples%20boxplots%20bis-1.png" class="img-fluid figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<div id="tabset-2-3" class="tab-pane" role="tabpanel" aria-labelledby="tabset-2-3-tab">
+<p><span id="tab-estimated-effects-1"></span></p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="report_files/figure-html/GF%20new%20samples%20lineplot-1.png" class="img-fluid figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p><strong>Fitted model:</strong></p>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Linear mixed model fit by REML. t-tests use Satterthwaite's method [
+lmerModLmerTest]
+Formula: score ~ loop_element + (1 | k_fold) + (1 | species)
+   Data: subset(scores_df, dataset == subset)
+
+REML criterion at convergence: -5899.3
+
+Scaled residuals: 
+    Min      1Q  Median      3Q     Max 
+-2.7947 -0.6888 -0.0971  0.6497  3.2451 
+
+Random effects:
+ Groups   Name        Variance  Std.Dev.
+ species  (Intercept) 5.757e-03 0.075874
+ k_fold   (Intercept) 6.594e-06 0.002568
+ Residual             6.862e-05 0.008284
+Number of obs: 900, groups:  species, 15; k_fold, 10
+
+Fixed effects:
+               Estimate Std. Error         df t value Pr(&gt;|t|)    
+(Intercept)   1.325e-01  1.961e-02  1.405e+01   6.754 9.08e-06 ***
+loop_element -2.614e-05  5.184e-06  8.750e+02  -5.042 5.59e-07 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
+</div>
+</div>
+</section>
+<section id="effect-using-su" class="level3">
+<h3 class="anchored" data-anchor-id="effect-using-su">Effect using “SU”</h3>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-3-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-1" role="tab" aria-controls="tabset-3-1" aria-selected="true" href="">Boxplot differences</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-3-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-2" role="tab" aria-controls="tabset-3-2" aria-selected="false" href="">Boxplot improvement</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-3-3-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-3" role="tab" aria-controls="tabset-3-3" aria-selected="false" href="">Estimated effects</a></li></ul>
+<div class="tab-content">
+<div id="tabset-3-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-3-1-tab">
+<p><span id="tab-boxplot-differences-2"></span></p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="report_files/figure-html/SU%20new%20samples%20boxplots-1.png" class="img-fluid figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<div id="tabset-3-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-3-2-tab">
+<p><span id="tab-boxplot-improvement-2"></span></p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="report_files/figure-html/SU%20new%20samples%20boxplots%20bis-1.png" class="img-fluid figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<div id="tabset-3-3" class="tab-pane" role="tabpanel" aria-labelledby="tabset-3-3-tab">
+<p><span id="tab-estimated-effects-2"></span></p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="report_files/figure-html/SU%20new%20samples%20lineplot-1.png" class="img-fluid figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p><strong>Fitted model:</strong></p>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Linear mixed model fit by REML. t-tests use Satterthwaite's method [
+lmerModLmerTest]
+Formula: score ~ loop_element + (1 | k_fold) + (1 | species)
+   Data: subset(scores_df, dataset == subset)
+
+REML criterion at convergence: -5853
+
+Scaled residuals: 
+    Min      1Q  Median      3Q     Max 
+-3.1231 -0.6802 -0.0923  0.6420  3.3094 
+
+Random effects:
+ Groups   Name        Variance  Std.Dev.
+ species  (Intercept) 5.819e-03 0.076283
+ k_fold   (Intercept) 5.916e-06 0.002432
+ Residual             7.241e-05 0.008509
+Number of obs: 900, groups:  species, 15; k_fold, 10
+
+Fixed effects:
+               Estimate Std. Error         df t value Pr(&gt;|t|)    
+(Intercept)   1.326e-01  1.972e-02  1.405e+01   6.726 9.51e-06 ***
+loop_element -2.713e-05  5.326e-06  8.750e+02  -5.095 4.27e-07 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
+</div>
+</div>
+</section>
+<section id="effect-using-3psu" class="level3">
+<h3 class="anchored" data-anchor-id="effect-using-3psu">Effect using “3PSU”</h3>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-4-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-4-1" role="tab" aria-controls="tabset-4-1" aria-selected="true" href="">Boxplot differences</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-4-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-4-2" role="tab" aria-controls="tabset-4-2" aria-selected="false" href="">Boxplot improvement</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-4-3-tab" data-bs-toggle="tab" data-bs-target="#tabset-4-3" role="tab" aria-controls="tabset-4-3" aria-selected="false" href="">Estimated effects</a></li></ul>
+<div class="tab-content">
+<div id="tabset-4-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-4-1-tab">
+<p><span id="tab-boxplot-differences-3"></span></p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="report_files/figure-html/3PSU%20new%20samples%20boxplots-1.png" class="img-fluid figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<div id="tabset-4-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-4-2-tab">
+<p><span id="tab-boxplot-improvement-3"></span></p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="report_files/figure-html/3PSU%20new%20samples%20boxplots%20bis-1.png" class="img-fluid figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<div id="tabset-4-3" class="tab-pane" role="tabpanel" aria-labelledby="tabset-4-3-tab">
+<p><span id="tab-estimated-effects-3"></span></p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="report_files/figure-html/3PSU%20new%20samples%20lineplot-1.png" class="img-fluid figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p><strong>Fitted model:</strong></p>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Linear mixed model fit by REML. t-tests use Satterthwaite's method [
+lmerModLmerTest]
+Formula: score ~ loop_element + (1 | k_fold) + (1 | species)
+   Data: subset(scores_df, dataset == subset)
+
+REML criterion at convergence: -5856.3
+
+Scaled residuals: 
+    Min      1Q  Median      3Q     Max 
+-3.1375 -0.6922 -0.0706  0.6391  3.3016 
+
+Random effects:
+ Groups   Name        Variance  Std.Dev.
+ species  (Intercept) 5.824e-03 0.076314
+ k_fold   (Intercept) 6.190e-06 0.002488
+ Residual             7.211e-05 0.008492
+Number of obs: 900, groups:  species, 15; k_fold, 10
+
+Fixed effects:
+               Estimate Std. Error         df t value Pr(&gt;|t|)    
+(Intercept)   1.327e-01  1.972e-02  1.405e+01   6.726 9.52e-06 ***
+loop_element -2.791e-05  5.314e-06  8.750e+02  -5.253 1.88e-07 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
+</div>
+</div>
+</section>
+</section>
+<section id="conclusions-1" class="level2">
+<h2 class="anchored" data-anchor-id="conclusions-1">Conclusions</h2>
+<p>Overall, these results show that the more we add new samples to the training set, the better the models perform on tests sets and validation sets.</p>
+<p>Looking at “Boxplot improvement” plots (for <a href="#tab-boxplot-improvement-1">“GF”</a>, <a href="#tab-boxplot-improvement-2">“SU”</a>, and <a href="#tab-boxplot-improvement-3">“3PSU”</a> strategies), the effect seems linear when adding new samples using the “SU” strategy, while improvements for “GF” and “3PSU” strategies reach a plateau after 50 new samples added, with no clear progress when adding more samples (100 or 150). This is very interesting as it indicates that, if using an optimal sampling strategy, adding more than 50-100 samples to our original dataset is not very informative.</p>
+</section>
+<section id="overall-discussion" class="level2">
+<h2 class="anchored" data-anchor-id="overall-discussion">Overall discussion</h2>
+<p>Other effects (not shown in this report but with figures available in <a href="../outputs/figures/STOC-OED/">this folder</a>) were investigated.</p>
+<p>Quick summary of results here: - Training size has a positive effect on test performance. This is the strongest effect measured. - Sampling strategy: “GF” and “SU” perform significantly better on test data than other strategies. - Number of new samples (independent of overall training size) and number of explicative variables both show statistically detectable but modest effects in practice. - Explicit spatial random effects significantly impact training scores and validation scores but not test scores.</p>
+<p>It should also be noted that, in our models, <strong>species random effect is high</strong>. As our aim is to generalise the predictions beyond the 15 species used here, this is fine for our usage. However it should be kept in mind that these results are highly species-dependant.</p>
+<p>K-folds random effects are negligible, which is expected and a good thing, meaning that the partitioning of the dataset has very little effect on scores.</p>
+<p>Overall, increasing the number of training samples is the dominant lever for improving HMSC model performance, with returns flattening beyond roughly 50-100 sampled plots (with “BAU” strategy for base model). However, this is only true for an initial random sampling of the STOC dataset, what if the initial sampled agricultural plots were not randomly chosen ? (i.e.&nbsp;in BIODICAPT, some explicative variables could be over-represented, which would skew the distributions). We’ll have to change the dataset to see that!</p>
+<div style="page-break-after: always;"></div>
+
+</section>
+</section>
+
+
+<div id="quarto-appendix" class="default"><section class="quarto-appendix-contents" role="doc-bibliography" id="quarto-bibliography"><h2 class="anchored quarto-appendix-heading">References</h2><div id="refs" class="references csl-bib-body" role="list">
+<div id="ref-ovaskainen_how_2017" class="csl-entry" role="listitem">
+<div class="csl-left-margin">1. </div><div class="csl-right-inline">Ovaskainen O, Tikhonov G, Norberg A, Blanchet FG, Duan L, Dunson D, et al. How to make more out of community data? <span>A</span> conceptual framework and its implementation as models and software. Ecology Letters [Internet]. 2017;20(5):561–576. Available from: <a href="https://doi.org/10.1111/ele.12757">https://doi.org/10.1111/ele.12757</a></div>
+</div>
+<div id="ref-tikhonov_joint_2020" class="csl-entry" role="listitem">
+<div class="csl-left-margin">2. </div><div class="csl-right-inline">Tikhonov G, Opedal ØH, Abrego N, Lehikoinen A, Jonge MMJ de, Oksanen J, et al. Joint species distribution modelling with the r-package <span>Hmsc</span>. Methods in Ecology and Evolution [Internet]. 2020 [cited 2020 Nov 23];11(3):442–447. Available from: <a href="https://besjournals.onlinelibrary.wiley.com/doi/abs/10.1111/2041-210X.13345">https://besjournals.onlinelibrary.wiley.com/doi/abs/10.1111/2041-210X.13345</a></div>
+</div>
+<div id="ref-valle_species_2024" class="csl-entry" role="listitem">
+<div class="csl-left-margin">3. </div><div class="csl-right-inline">Vallé C, Poggiato G, Thuiller W, Jiguet F, Princé K, Le Viol I. Species associations in joint species distribution models: From missing variables to conditional predictions. Journal of Biogeography [Internet]. 2024 Feb [cited 2026 June 12];51(2):311–324. Available from: <a href="https://onlinelibrary.wiley.com/doi/10.1111/jbi.14752">https://onlinelibrary.wiley.com/doi/10.1111/jbi.14752</a></div>
+</div>
+<div id="ref-mondainmonval_adaptive_2024" class="csl-entry" role="listitem">
+<div class="csl-left-margin">4. </div><div class="csl-right-inline">Mondain‐Monval T, Pocock M, Rolph S, August T, Wright E, Jarvis S. Adaptive sampling by citizen scientists improves species distribution model performance: <span>A</span> simulation study. Methods in Ecology and Evolution [Internet]. 2024 July [cited 2026 May 22];15(7):1206–1220. Available from: <a href="https://besjournals.onlinelibrary.wiley.com/doi/10.1111/2041-210X.14355">https://besjournals.onlinelibrary.wiley.com/doi/10.1111/2041-210X.14355</a></div>
+</div>
+</div></section><section id="footnotes" class="footnotes footnotes-end-of-document" role="doc-endnotes"><h2 class="anchored quarto-appendix-heading">Footnotes</h2>
+
+<ol>
+<li id="fn1"><p>Sometimes, also referred to as “adaptive sampling”.<a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+</ol>
+</section></div></main>
+<!-- /main column -->
+<script>
+function activateTabForHash(hash) {
+  if (!hash) return;
+  const target = document.querySelector(hash);
+  if (!target) return;
+
+  // Find the enclosing tab pane (Quarto wraps tabset content in .tab-pane)
+  const pane = target.closest('.tab-pane');
+  if (pane && pane.id) {
+    // Find the nav-link that controls this pane
+    const tabsetRoot = pane.closest('.panel-tabset, .tabset');
+    if (tabsetRoot) {
+      const trigger = tabsetRoot.querySelector(
+        `[data-bs-target="#${pane.id}"], [href="#${pane.id}"]`
+      );
+      if (trigger) {
+        // Use Bootstrap's Tab API if available, else simulate a click
+        if (window.bootstrap && bootstrap.Tab) {
+          bootstrap.Tab.getOrCreateInstance(trigger).show();
+        } else {
+          trigger.click();
+        }
+      }
+    }
+  }
+
+  // Scroll after the tab has switched (give the DOM a tick to update)
+  setTimeout(() => {
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 50);
+}
+
+// Handle initial page load with a hash
+document.addEventListener('DOMContentLoaded', () => {
+  if (location.hash) activateTabForHash(location.hash);
+});
+
+// Handle clicks on in-page anchor links (hash may not change if already set)
+document.addEventListener('click', (e) => {
+  const link = e.target.closest('a[href^="#"]');
+  if (!link) return;
+  const hash = link.getAttribute('href');
+  // let default anchor behavior happen too, but also force tab switch
+  requestAnimationFrame(() => activateTabForHash(hash));
+});
+</script>
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
